@@ -1,0 +1,1603 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Toy3DMaker — Donde tus ideas despegan</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&family=Lexend:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --blue: #0055DD;
+  --orange: #FF4500;
+  --teal: #00a89d;
+  --bg: transparent;
+  --surface: rgba(255,255,255,0.82);
+  --text: #1a1a1a;
+  --muted: #555;
+  --glass: rgba(255,255,255,0.55);
+  --glass-border: rgba(255,255,255,0.7);
+}
+
+html { scroll-behavior: auto; }
+
+body {
+  background: #87c5e8;
+  color: var(--text);
+  font-family: 'Lexend', sans-serif;
+  overflow-x: hidden;
+  cursor: none;
+}
+
+#cursor {
+  position: fixed; width: 12px; height: 12px;
+  background: var(--teal); border-radius: 50%;
+  pointer-events: none; z-index: 9999;
+  transform: translate(-50%, -50%);
+  transition: background 0.3s, width 0.2s, height 0.2s;
+  mix-blend-mode: screen;
+}
+#cursor-ring {
+  position: fixed; width: 40px; height: 40px;
+  border: 1.5px solid rgba(75,218,215,0.5); border-radius: 50%;
+  pointer-events: none; z-index: 9998;
+  transform: translate(-50%, -50%);
+  transition: width 0.2s, height 0.2s, border-color 0.3s;
+}
+
+.hero-content { position: relative; z-index: 20; }
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 1; opacity: 0.4;
+}
+
+#particle-canvas {
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 2;
+}
+
+/* NAV */
+nav {
+  position: fixed; top: 0; left: 0; right: 0;
+  z-index: 100; padding: 0 40px; height: 80px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(12,12,12,0);
+  backdrop-filter: blur(0px);
+  border-bottom: 1px solid rgba(255,255,255,0);
+  transition: background 0.5s, backdrop-filter 0.5s, border-color 0.5s;
+}
+nav.scrolled {
+  background: rgba(255,255,255,0.85);
+   border-bottom: 1px solid rgba(255,255,255,0.6);
+}
+.nav-logo {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 900; font-size: 22px;
+  color: var(--teal); text-transform: uppercase;
+  letter-spacing: -0.02em;
+  display: flex; align-items: center; gap: 10px;
+}
+.logo-dot {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--blue), var(--teal));
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; line-height: 1;
+}
+.nav-links { display: flex; gap: 36px; list-style: none; }
+.nav-links a {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); text-decoration: none;
+  transition: color 0.3s; cursor: none;
+}
+.nav-links a:hover { color: var(--teal); }
+nav.scrolled .nav-links a { color: #333; }
+nav.scrolled .nav-links a:hover { color: var(--teal); }
+.nav-cta {
+  background: var(--blue); color: white; border: none;
+  padding: 10px 24px; border-radius: 100px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  cursor: none;
+  transition: background 0.3s, transform 0.2s, box-shadow 0.3s;
+  box-shadow: 0 0 20px rgba(0,102,255,0.4);
+}
+.nav-cta:hover { background: var(--orange); transform: scale(1.05); box-shadow: 0 0 20px rgba(255,69,0,0.4); }
+
+section { position: relative; z-index: 10; }
+
+/* HERO */
+#hero {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100vh;
+  display: flex; align-items: flex-end;
+  padding: 0 80px 80px;
+  background: transparent;
+  overflow: hidden;
+  z-index: 5;
+}
+#hero-spacer {
+  height: 280vh;
+}
+#hero-bg-video, #hero-exit-video, #loop-bridge-video, #return-video {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+#hero-exit-video, #loop-bridge-video, #return-video { opacity: 0; }
+
+#andys-room-bg {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.hero-content { max-width: 560px; position: relative; z-index: 20; }
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 14px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 100px; margin-bottom: 32px;
+ }
+.hero-badge span {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+}
+.badge-dot { width: 6px; height: 6px; background: var(--teal); border-radius: 50%; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+
+.hero-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(52px, 6vw, 80px);
+  font-weight: 900; line-height: 1.0;
+  letter-spacing: -0.03em; margin-bottom: 24px;
+  text-transform: uppercase;
+}
+.hero-title .gradient {
+  background: linear-gradient(135deg, var(--teal), var(--blue), var(--orange));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; background-size: 200%;
+  animation: gradient-shift 4s ease infinite;
+}
+@keyframes gradient-shift { 0%,100%{background-position:0%} 50%{background-position:100%} }
+
+.hero-sub {
+  font-size: 17px; color: var(--muted);
+  line-height: 1.7; margin-bottom: 40px; max-width: 460px;
+}
+.hero-btns { display: flex; gap: 16px; margin-bottom: 64px; }
+
+.btn-primary {
+  padding: 16px 32px; background: var(--blue); color: white;
+  border: none; border-radius: 100px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  cursor: none; display: flex; align-items: center; gap: 10px;
+  transition: all 0.3s;
+  box-shadow: 0 8px 30px rgba(0,102,255,0.35);
+}
+.btn-primary:hover { background: var(--orange); transform: translateY(-2px); box-shadow: 0 12px 40px rgba(255,69,0,0.4); }
+
+.btn-outline {
+  padding: 16px 32px;
+  background: rgba(255,255,255,0.05);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 100px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  cursor: none; transition: all 0.3s;
+   box-shadow: rgba(0,0,0,0.15) 0px 8px 24px, rgba(255,255,255,0.08) 0px 1px 0px inset;
+}
+.btn-outline:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); }
+
+.hero-stats { display: flex; gap: 48px; }
+.stat-num { font-family: 'Space Grotesk', sans-serif; font-size: 32px; font-weight: 900; color: var(--text); }
+.stat-label { font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-top: 4px; }
+
+.scroll-hint {
+  position: absolute; bottom: 40px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  opacity: 0.35; animation: hint-bounce 2s infinite; z-index: 20;
+}
+.scroll-hint span { font-family: 'Space Grotesk', sans-serif; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: white; }
+.scroll-mouse {
+  width: 22px; height: 34px;
+  border: 2px solid rgba(255,255,255,0.5); border-radius: 12px;
+  position: relative;
+}
+.scroll-mouse::before {
+  content: ''; position: absolute; top: 5px; left: 50%;
+  transform: translateX(-50%);
+  width: 3px; height: 6px; background: white; border-radius: 2px;
+  animation: scroll-wheel 1.5s infinite;
+}
+@keyframes scroll-wheel { 0%{opacity:1;transform:translateX(-50%) translateY(0)} 100%{opacity:0;transform:translateX(-50%) translateY(12px)} }
+@keyframes hint-bounce { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(8px)} }
+
+/* STORY OVERLAY */
+.story-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column;
+  z-index: 15;
+  pointer-events: none;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.story-line {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(52px, 7.5vw, 92px);
+  font-weight: 900; text-transform: uppercase;
+  letter-spacing: -0.03em; line-height: 1.05;
+  color: #ffffff; text-align: center; display: block;
+  text-shadow: 0 4px 40px rgba(0,0,0,0.7), 0 2px 20px rgba(75,218,215,0.4);
+}
+.story-line .teal { color: var(--teal); }
+.story-line .orange { color: var(--orange); }
+
+/* FEATURES */
+#features { padding: 160px 80px; background: rgba(255,255,255,0.92); backdrop-filter: blur(24px); border-top: 1px solid var(--glass-border); }
+.section-label {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.15em;
+  color: var(--teal); margin-bottom: 16px; display: block;
+}
+.section-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(36px, 4vw, 56px);
+  font-weight: 900; letter-spacing: -0.02em;
+  line-height: 1.1; margin-bottom: 80px; max-width: 600px;
+  text-transform: uppercase;
+}
+.section-title .accent { color: var(--teal); }
+.features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.feature-card {
+  background: rgba(255,255,255,0.6);
+  border: 1px solid rgba(255,255,255,0.8);
+  border-radius: 17px; padding: 40px;
+  transition: border-color 0.3s, transform 0.3s;
+  position: relative; overflow: hidden;
+   box-shadow: rgba(0,0,0,0.08) 0px 10px 30px, rgba(255,255,255,0.8) 0px 1px 0px inset;
+}
+.feature-card::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 0%, rgba(75,218,215,0.06), transparent 70%);
+  opacity: 0; transition: opacity 0.4s;
+}
+.feature-card:hover { border-color: rgba(75,218,215,0.25); transform: translateY(-6px); }
+.feature-card:hover::before { opacity: 1; }
+.feature-icon {
+  width: 52px; height: 52px;
+  background: rgba(75,218,215,0.08);
+  border: 1px solid rgba(75,218,215,0.15);
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; margin-bottom: 24px;
+}
+.feature-title { font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 700; text-transform: uppercase; color: var(--text); margin-bottom: 12px; }
+.feature-desc { font-size: 14px; color: var(--muted); line-height: 1.7; }
+
+/* OBJECTS — CAROUSEL */
+#objects-section { padding: 120px 0 140px; background: rgba(255,255,255,0.55); border-top: 1px solid var(--glass-border); }
+.objects-intro { text-align: center; margin-bottom: 64px; padding: 0 80px; }
+
+.carousel-wrap { position: relative; overflow: hidden; padding: 20px 0 48px; }
+
+.objects-track {
+  display: flex;
+  gap: 28px;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+.object-card {
+  flex-shrink: 0;
+  width: 300px;
+  background: rgba(255,255,255,0.65);
+  border: 1px solid rgba(255,255,255,0.8);
+  border-radius: 17px; overflow: hidden;
+   box-shadow: rgba(0,0,0,0.3) 0px 20px 40px;
+  transition: opacity 0.5s ease, transform 0.5s ease,
+              box-shadow 0.5s ease, border-color 0.5s ease;
+  opacity: 0.3;
+  transform: scale(0.86);
+  pointer-events: none;
+}
+.object-card.c-active {
+  opacity: 1;
+  transform: scale(1);
+  border-color: rgba(75,218,215,0.25);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 30px rgba(75,218,215,0.12);
+  pointer-events: auto;
+}
+.object-canvas-wrap { width: 100%; height: 260px; }
+.object-canvas-wrap canvas { width: 100% !important; height: 100% !important; }
+.object-info { padding: 20px 24px; }
+.object-tag {
+  display: inline-block; padding: 3px 10px;
+  background: rgba(75,218,215,0.08);
+  border: 1px solid rgba(75,218,215,0.2);
+  border-radius: 100px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--teal); margin-bottom: 10px;
+}
+.object-name { font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 700; text-transform: uppercase; color: var(--text); margin-bottom: 4px; }
+.object-mat { font-size: 12px; color: var(--muted); }
+
+.carousel-progress {
+  display: flex; justify-content: center; gap: 6px; margin-top: 28px;
+}
+.carousel-pip {
+  height: 3px; border-radius: 100px;
+  background: rgba(255,255,255,0.15);
+  transition: all 0.4s ease;
+}
+.carousel-pip.active { background: var(--teal); }
+
+/* LAB */
+#lab { padding: 160px 80px; background: var(--glass); backdrop-filter: blur(24px); border-top: 1px solid var(--glass-border); }
+.lab-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 80px; }
+.lab-card { position: relative; border-radius: 17px; overflow: hidden; height: 360px; border: 1px solid rgba(255,255,255,0.06); cursor: none; }
+.lab-card video { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s ease; }
+.lab-card:hover video { transform: scale(1.08); }
+.lab-card-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.2) 50%, transparent 100%); }
+.lab-card-content { position: absolute; bottom: 0; left: 0; right: 0; padding: 28px; }
+.lab-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 100px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px;
+}
+.lab-mat-name { font-family: 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 900; text-transform: uppercase; color: var(--text); margin-bottom: 6px; }
+.lab-mat-desc { font-size: 13px; color: rgba(255,255,255,0.55); }
+.lab-specs { display: flex; gap: 6px; margin-top: 12px; opacity: 0; transform: translateY(8px); transition: all 0.3s; }
+.lab-card:hover .lab-specs { opacity: 1; transform: translateY(0); }
+.lab-spec { padding: 3px 10px; background: rgba(255,255,255,0.1); border-radius: 100px; font-family: 'Space Grotesk', sans-serif; font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* COTIZADOR */
+#cotizador { padding: 160px 80px; background: var(--glass); backdrop-filter: blur(24px); border-top: 1px solid var(--glass-border); }
+.cotizador-wrap { max-width: 760px; margin: 80px auto 0; }
+.cotizador-box {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 17px; padding: 48px;
+   box-shadow: rgba(0,0,0,0.18) 0px 10px 30px, rgba(255,255,255,0.06) 0px 1px 0px inset, rgba(255,255,255,0.03) 0px -1px 0px inset;
+}
+.upload-zone {
+  border: 2px dashed rgba(255,255,255,0.12);
+  border-radius: 16px; padding: 56px; text-align: center;
+  transition: border-color 0.3s, background 0.3s;
+  cursor: none; margin-bottom: 32px;
+}
+.upload-zone:hover { border-color: var(--teal); background: rgba(75,218,215,0.03); }
+.upload-icon { font-size: 48px; margin-bottom: 16px; display: block; }
+.upload-title { font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 700; text-transform: uppercase; color: var(--text); margin-bottom: 8px; }
+.upload-sub { font-size: 14px; color: var(--muted); }
+.cot-selects { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 32px; }
+.cot-group label { display: block; font-family: 'Space Grotesk', sans-serif; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 10px; }
+.cot-group select, .cot-group input { width: 100%; background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 14px 16px; color: var(--text); font-family: 'Lexend', sans-serif; font-size: 14px; outline: none; transition: border-color 0.3s; cursor: none; }
+.cot-group select:focus, .cot-group input:focus { border-color: var(--teal); }
+.cot-result { background: rgba(75,218,215,0.04); border: 1px solid rgba(75,218,215,0.12); border-radius: 16px; padding: 28px 32px; display: flex; align-items: center; justify-content: space-between; }
+.cot-price { font-family: 'Space Grotesk', sans-serif; font-size: 42px; font-weight: 900; color: var(--text); }
+.cot-label { font-family: 'Space Grotesk', sans-serif; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 8px; }
+
+/* MONITOR */
+#monitor { padding: 120px 80px; background: var(--glass); backdrop-filter: blur(24px); border-top: 1px solid var(--glass-border); }
+.monitor-box { max-width: 700px; margin: 0 auto; background: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.8); border-radius: 17px; padding: 48px; box-shadow: rgba(0,0,0,0.08) 0px 10px 30px; }
+.monitor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+.monitor-status { display: flex; align-items: center; gap: 8px; font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--teal); }
+.monitor-pct { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700; color: var(--text); }
+.progress-track { width: 100%; height: 4px; background: rgba(255,255,255,0.06); border-radius: 100px; overflow: hidden; margin-bottom: 40px; }
+.progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--blue), var(--teal), var(--orange)); border-radius: 100px; }
+.monitor-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.metric { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 24px; text-align: center; }
+.metric-icon { font-size: 24px; margin-bottom: 12px; display: block; }
+.metric-val { font-family: 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 900; color: var(--text); }
+.metric-key { font-family: 'Space Grotesk', sans-serif; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-top: 6px; }
+
+/* VISUALIZADOR 3D */
+#visualizador {
+  padding: 160px 80px;
+  background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(24px);
+  border-top: 1px solid var(--glass-border);
+}
+.viz-hero-sub {
+  font-size: 16px; color: var(--muted); text-align: center;
+  max-width: 560px; margin: 0 auto 56px; line-height: 1.7;
+}
+.viz-upload-zone {
+  max-width: 680px; margin: 0 auto 40px;
+  border: 2px dashed rgba(0,168,157,0.3);
+  border-radius: 20px; padding: 56px 40px;
+  text-align: center; cursor: pointer;
+  transition: border-color .3s, background .3s;
+  background: rgba(0,168,157,0.02);
+  position: relative; overflow: hidden;
+}
+.viz-upload-zone:hover { border-color: var(--teal); background: rgba(0,168,157,0.04); }
+.viz-upload-zone.drag-over { border-color: var(--teal); background: rgba(0,168,157,0.07); transform: scale(1.01); }
+.viz-upload-zone.has-image { border-style: solid; border-color: var(--teal); }
+.viz-upload-icon { font-size: 52px; margin-bottom: 16px; display: block; transition: transform .3s; }
+.viz-upload-zone:hover .viz-upload-icon { transform: scale(1.1) rotate(-4deg); }
+.viz-upload-title { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 700; text-transform: uppercase; color: var(--text); margin-bottom: 8px; }
+.viz-upload-sub   { font-size: 13px; color: var(--muted); }
+.viz-preview-img  {
+  width: 100%; max-height: 320px; object-fit: contain;
+  border-radius: 12px; display: none; margin-bottom: 16px;
+}
+.viz-preview-img.visible { display: block; }
+.viz-change-btn {
+  font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .08em;
+  color: var(--teal); background: none; border: none; cursor: pointer;
+  display: none; margin-top: 8px; text-decoration: underline;
+}
+.viz-change-btn.visible { display: inline-block; }
+
+.viz-generate-wrap { text-align: center; margin-bottom: 48px; }
+.btn-generate {
+  padding: 18px 48px;
+  background: linear-gradient(135deg, var(--teal), var(--blue));
+  color: white; border: none; border-radius: 100px;
+  font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .08em; cursor: pointer;
+  transition: transform .2s, box-shadow .2s, opacity .2s;
+  box-shadow: 0 8px 32px rgba(0,168,157,.35);
+}
+.btn-generate:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 14px 40px rgba(0,168,157,.45); }
+.btn-generate:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+.viz-progress { max-width: 640px; margin: 0 auto 56px; display: none; }
+.viz-progress.visible { display: block; }
+.viz-steps { display: flex; flex-direction: column; gap: 12px; }
+.viz-step {
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px 20px;
+  background: rgba(255,255,255,.7);
+  border: 1px solid rgba(255,255,255,.8);
+  border-radius: 14px;
+  transition: border-color .3s, background .3s;
+}
+.viz-step.active  { border-color: rgba(0,168,157,.3); background: rgba(0,168,157,.04); }
+.viz-step.done    { border-color: rgba(0,168,157,.2); background: rgba(0,168,157,.02); }
+.viz-step-icon {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  background: rgba(255,255,255,.8); border: 1px solid rgba(255,255,255,.6);
+  transition: background .3s, border-color .3s;
+}
+.viz-step.active .viz-step-icon { background: rgba(0,168,157,.12); border-color: rgba(0,168,157,.3); animation: viz-spin .8s linear infinite; }
+.viz-step.done   .viz-step-icon { background: rgba(0,168,157,.1);  border-color: rgba(0,168,157,.2); animation: none; }
+@keyframes viz-spin { to { transform: rotate(360deg); } }
+.viz-step-body { flex: 1; }
+.viz-step-name { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text); }
+.viz-step-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.viz-step-badge {
+  font-family: 'Space Grotesk', sans-serif; font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .08em; padding: 3px 10px;
+  border-radius: 100px; flex-shrink: 0;
+}
+.viz-step-badge.wait    { background: rgba(0,0,0,.05); color: var(--muted); }
+.viz-step-badge.running { background: rgba(0,168,157,.12); color: var(--teal); }
+.viz-step-badge.done    { background: rgba(34,197,94,.1);  color: #16a34a; }
+.viz-progress-bar-wrap { height: 3px; background: rgba(0,0,0,.06); border-radius: 100px; margin: 6px 0 0; overflow: hidden; display: none; }
+.viz-step.active .viz-progress-bar-wrap { display: block; }
+.viz-progress-bar { height: 100%; background: linear-gradient(90deg, var(--teal), var(--blue)); border-radius: 100px; transition: width .4s ease; }
+
+.viz-results { display: none; gap: 28px; grid-template-columns: 1fr 1fr; max-width: 960px; margin: 0 auto; }
+.viz-results.visible { display: grid; }
+.viz-result-card {
+  background: rgba(255,255,255,.7);
+  border: 1px solid rgba(255,255,255,.8);
+  border-radius: 20px; overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,.08);
+}
+.viz-result-header { padding: 20px 24px 0; display: flex; align-items: center; justify-content: space-between; }
+.viz-result-label { font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--teal); }
+.viz-result-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 3px 10px; border-radius: 100px; background: rgba(0,168,157,.08); border: 1px solid rgba(0,168,157,.2); color: var(--teal); }
+.viz-3d-canvas-wrap { width: 100%; height: 340px; position: relative; }
+.viz-3d-canvas-wrap canvas { width: 100% !important; height: 100% !important; }
+.viz-3d-hint { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); font-family: 'Space Grotesk', sans-serif; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: rgba(0,0,0,.3); pointer-events: none; }
+.viz-render-wrap { width: 100%; height: 340px; position: relative; background: #f0f0f0; }
+.viz-render-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.viz-render-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; background: rgba(240,240,240,.9); }
+.viz-render-spinner { width: 40px; height: 40px; border-radius: 50%; border: 3px solid rgba(0,168,157,.2); border-top-color: var(--teal); animation: viz-spin .8s linear infinite; }
+.viz-result-footer { padding: 16px 24px; display: flex; gap: 10px; border-top: 1px solid rgba(255,255,255,.6); }
+.viz-btn { flex: 1; padding: 10px 16px; border-radius: 100px; border: none; cursor: pointer; font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; transition: all .2s; text-align: center; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.viz-btn-primary { background: var(--blue); color: white; box-shadow: 0 4px 16px rgba(0,85,221,.25); }
+.viz-btn-primary:hover { background: var(--orange); box-shadow: 0 6px 20px rgba(255,69,0,.3); }
+.viz-btn-ghost { background: rgba(0,0,0,.05); color: var(--text); border: 1px solid rgba(0,0,0,.08); }
+.viz-btn-ghost:hover { background: rgba(0,0,0,.08); }
+.viz-error { max-width: 640px; margin: 0 auto 32px; padding: 16px 20px; border-radius: 14px; background: rgba(239,68,68,.06); border: 1px solid rgba(239,68,68,.2); font-size: 13px; color: #dc2626; display: none; text-align: center; }
+.viz-error.visible { display: block; }
+
+@media (max-width: 768px) {
+  #visualizador { padding: 80px 24px; }
+  .viz-results.visible { grid-template-columns: 1fr; }
+  .viz-upload-zone { padding: 40px 24px; }
+}
+
+/* WHATSAPP */
+.whatsapp-btn {
+  position: fixed; bottom: 28px; right: 28px; z-index: 300;
+  width: 58px; height: 58px; border-radius: 50%;
+  background: #25D366;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 24px rgba(37,211,102,0.45), 0 2px 8px rgba(0,0,0,0.25);
+  text-decoration: none; transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+  animation: wa-pulse 2.5s ease-in-out infinite;
+}
+.whatsapp-btn:hover { transform: scale(1.1); box-shadow: 0 6px 32px rgba(37,211,102,0.6); }
+.whatsapp-btn svg { width: 30px; height: 30px; fill: white; }
+@keyframes wa-pulse {
+  0%,100% { box-shadow: 0 4px 24px rgba(37,211,102,0.45), 0 0 0 0 rgba(37,211,102,0.4); }
+  50%      { box-shadow: 0 4px 24px rgba(37,211,102,0.45), 0 0 0 10px rgba(37,211,102,0); }
+}
+
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+  #hero { padding: 0 40px 60px; }
+  .hero-title { font-size: clamp(38px, 6vw, 60px); }
+  #features { padding: 100px 40px; }
+  .features-grid { grid-template-columns: repeat(2, 1fr); }
+  #objects-section .objects-intro { padding: 0 40px; }
+  #lab { padding: 100px 40px; }
+  #cotizador { padding: 100px 40px; }
+  #monitor { padding: 80px 40px; }
+  footer { padding: 60px 40px; }
+}
+@media (max-width: 768px) {
+  nav { padding: 0 20px; height: 64px; }
+  .nav-links { display: none; }
+  .nav-cta { padding: 8px 16px; font-size: 11px; }
+  #hero { padding: 0 24px 48px; }
+  .hero-title { font-size: clamp(34px, 10vw, 52px); }
+  .hero-sub { font-size: 15px; }
+  .hero-btns { flex-direction: column; gap: 12px; }
+  .btn-primary, .btn-outline { padding: 14px 24px; justify-content: center; }
+  .hero-stats { gap: 24px; }
+  .stat-num { font-size: 24px; }
+  .float-pill-left { display: none; }
+  #features { padding: 80px 24px; }
+  .features-grid { grid-template-columns: 1fr; }
+  .section-title { font-size: clamp(28px, 7vw, 40px); }
+  .objects-intro { padding: 0 24px !important; }
+  #lab { padding: 80px 24px; }
+  .lab-grid { grid-template-columns: 1fr; gap: 16px; }
+  .lab-card { height: 280px; }
+  #cotizador { padding: 80px 24px; }
+  .cot-selects { grid-template-columns: 1fr; }
+  .cotizador-box { padding: 28px 20px; }
+  .cot-result { flex-direction: column; gap: 20px; align-items: flex-start; }
+  #monitor { padding: 60px 24px; }
+  .monitor-metrics { grid-template-columns: repeat(3,1fr); gap: 10px; }
+  .metric { padding: 16px 10px; }
+  .metric-val { font-size: 20px; }
+  footer { padding: 48px 24px; }
+  .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+  .story-line { font-size: clamp(36px, 9vw, 60px); }
+  .whatsapp-btn { bottom: 20px; right: 20px; }
+}
+@media (max-width: 480px) {
+  .hero-stats { gap: 16px; }
+  .stat-num { font-size: 20px; }
+  .monitor-metrics { grid-template-columns: 1fr; }
+  .footer-grid { grid-template-columns: 1fr; }
+}
+
+/* FOOTER */
+footer { background: rgba(255,255,255,0.88); backdrop-filter: blur(24px); border-top: 1px solid var(--glass-border); padding: 80px; }
+.footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 64px; margin-bottom: 64px; }
+.footer-brand { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 900; color: var(--teal); text-transform: uppercase; letter-spacing: -0.02em; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+.footer-desc { font-size: 14px; color: var(--muted); line-height: 1.8; }
+.footer-col-title { font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text); margin-bottom: 24px; }
+.footer-links { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+.footer-links a { font-size: 14px; color: var(--muted); text-decoration: none; transition: color 0.3s; cursor: none; }
+.footer-links a:hover { color: var(--orange); }
+.footer-bottom { display: flex; justify-content: space-between; align-items: center; padding-top: 32px; border-top: 1px solid rgba(255,255,255,0.05); }
+.footer-copy { font-size: 13px; color: #333; font-family: 'Space Grotesk', sans-serif; }
+.soon { font-size: 9px; background: rgba(75,218,215,0.15); color: var(--teal); padding: 2px 7px; border-radius: 100px; text-transform: uppercase; letter-spacing: 0.08em; margin-left: 6px; vertical-align: middle; }
+
+/* FLOATING PILLS */
+.float-pill {
+  position: fixed; bottom: 28px; z-index: 200;
+  padding: 11px 22px; border-radius: 100px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.65);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+   box-shadow: rgba(0,0,0,0.2) 0px 10px 30px, rgba(255,255,255,0.1) 0px 1px 0px inset, rgba(255,255,255,0.04) 0px -1px 0px inset;
+  cursor: none; transition: all 0.3s; text-decoration: none;
+}
+.float-pill:hover { color: white; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.22); }
+.float-pill-left { left: 28px; }
+.float-pill-right { right: 28px; display: flex; align-items: center; gap: 8px; }
+.float-pill-right::before { content: ''; width: 7px; height: 7px; background: var(--teal); border-radius: 50%; animation: pulse 2s infinite; }
+
+/* REVEAL */
+.reveal { opacity: 0; transform: translateY(40px); }
+.reveal-left { opacity: 0; transform: translateX(-60px); }
+.reveal-right { opacity: 0; transform: translateX(60px); }
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+<canvas id="particle-canvas"></canvas>
+
+<a href="#cotizador" class="float-pill float-pill-left">⚡ Cotización gratis</a>
+<div class="float-pill float-pill-right">Disponible ahora</div>
+<a href="https://wa.me/34663486100?text=Hola%2C%20me%20gustar%C3%ADa%20cotizar%20una%20impresi%C3%B3n%203D" target="_blank" rel="noopener" class="whatsapp-btn" title="Contáctanos por WhatsApp">
+  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+</a>
+
+<nav id="nav">
+  <div class="nav-logo">
+    <div class="logo-dot">◈</div>
+    Toy3DMaker
+  </div>
+  <ul class="nav-links">
+    <li><a href="#visualizador">✦ Visualizador 3D</a></li>
+    <li><a href="#objects-section">Galería</a></li>
+    <li><a href="#features">Capacidades</a></li>
+    <li><a href="#lab">The Lab</a></li>
+    <li><a href="#cotizador">Cotizador</a></li>
+  </ul>
+  <a href="#visualizador" class="nav-cta" style="text-decoration:none">✦ Visualizador 3D</a>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <video id="hero-bg-video" autoplay muted playsinline preload="auto">
+    <source src="assets/andys_room_web.mp4" type="video/mp4">
+  </video>
+  <video id="loop-bridge-video" muted playsinline preload="metadata">
+    <source src="assets/toys_present_reverse_web.mp4" type="video/mp4">
+  </video>
+  <video id="hero-exit-video" muted playsinline preload="metadata">
+    <source src="assets/andys_room_exit_web.mp4" type="video/mp4">
+  </video>
+  <video id="return-video" muted playsinline preload="metadata">
+    <source src="assets/toys_coming_web.mp4" type="video/mp4">
+  </video>
+  <img id="andys-room-bg" src="assets/andys_room_empty.png" alt="">
+  <div class="hero-content">
+    <div class="hero-badge">
+      <span class="badge-dot"></span>
+      <span>Tecnología de Grado Industrial</span>
+    </div>
+    <h1 class="hero-title">
+      Donde tus<br>
+      <span class="gradient">ideas despegan</span>
+    </h1>
+    <p class="hero-sub">Impresión 3D premium de juguetes coleccionables y prototipos únicos. Capa por capa, con precisión quirúrgica.</p>
+    <div class="hero-btns">
+      <button class="btn-primary" onclick="document.getElementById('cotizador').scrollIntoView({behavior:'smooth'})">Empieza tu impresión ✦</button>
+      <button class="btn-outline" onclick="document.getElementById('objects-section').scrollIntoView({behavior:'smooth'})">Ver Galería</button>
+    </div>
+    <div class="hero-stats">
+      <div><div class="stat-num">47</div><div class="stat-label">Piezas creadas</div></div>
+      <div><div class="stat-num">0.05mm</div><div class="stat-label">Precisión</div></div>
+      <div><div class="stat-num">24h</div><div class="stat-label">Entrega express</div></div>
+    </div>
+  </div>
+  <div class="scroll-hint">
+    <div class="scroll-mouse"></div>
+    <span>Scroll</span>
+  </div>
+  <div class="story-overlay" id="story-overlay">
+    <div class="story-line" id="sl0">IMPRIMIMOS</div>
+    <div class="story-line" id="sl1">EL <span class="teal">FUTURO</span></div>
+    <div class="story-line" id="sl2">CAPA A CAPA</div>
+    <div class="story-line" id="sl3">CON PRECISIÓN</div>
+    <div class="story-line" id="sl4"><span class="orange">QUIRÚRGICA</span></div>
+  </div>
+</section>
+
+<div id="hero-spacer"></div>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="reveal">
+    <span class="section-label">Capacidades</span>
+    <h2 class="section-title">Fabricamos el <span class="accent">futuro</span></h2>
+  </div>
+  <div class="features-grid">
+    <div class="feature-card reveal"><div class="feature-icon">⚡</div><div class="feature-title">Prototipado Rápido</div><div class="feature-desc">De archivo CAD a objeto físico en menos de 24 horas. Sin compromisos en calidad.</div></div>
+    <div class="feature-card reveal"><div class="feature-icon">🎯</div><div class="feature-title">Precisión Industrial</div><div class="feature-desc">Capas de 0.05mm. Detalles que no puedes ver a simple vista pero que sientes al tacto.</div></div>
+    <div class="feature-card reveal"><div class="feature-icon">🎭</div><div class="feature-title">Personalización Total</div><div class="feature-desc">Figuras únicas a medida. Tu diseño, tu escala, tu acabado. Cada pieza es irrepetible.</div></div>
+    <div class="feature-card reveal"><div class="feature-icon">🎨</div><div class="feature-title">Diseño Colaborativo</div><div class="feature-desc">Nuestros ingenieros 3D trabajan contigo desde el boceto hasta la pieza final.</div></div>
+    <div class="feature-card reveal"><div class="feature-icon">🧪</div><div class="feature-title">Multi-material</div><div class="feature-desc">PLA, PETG, Resina UV, ASA, TPU. El material correcto para cada aplicación.</div></div>
+    <div class="feature-card reveal"><div class="feature-icon">📦</div><div class="feature-title">Envío Global</div><div class="feature-desc">Empaquetado de protección premium y envío a cualquier parte del mundo.</div></div>
+  </div>
+</section>
+
+<!-- 3D OBJECTS -->
+<section id="objects-section">
+  <div class="objects-intro reveal">
+    <span class="section-label">Galería 3D</span>
+    <h2 class="section-title" style="max-width:100%;text-align:center">Explora nuestras <span class="accent">piezas</span></h2>
+    <p style="color:var(--muted);font-size:15px;margin-top:12px">Pasa el cursor para interactuar</p>
+  </div>
+  <div class="carousel-wrap">
+    <div class="objects-track" id="carousel-track">
+      <div class="object-card"><div class="object-canvas-wrap" id="obj0"></div><div class="object-info"><div class="object-tag">Coleccionable</div><div class="object-name">Dragón RPG</div><div class="object-mat">Resina UV · Edición Limitada</div></div></div>
+      <div class="object-card"><div class="object-canvas-wrap" id="obj1"></div><div class="object-info"><div class="object-tag">Miniatura</div><div class="object-name">Caballero Medieval</div><div class="object-mat">Resina UV · Alta precisión</div></div></div>
+      <div class="object-card"><div class="object-canvas-wrap" id="obj2"></div><div class="object-info"><div class="object-tag">Decoración</div><div class="object-name">Torii Japonés</div><div class="object-mat">PLA · Acabado mate</div></div></div>
+      <div class="object-card"><div class="object-canvas-wrap" id="obj3"></div><div class="object-info"><div class="object-tag">RPG</div><div class="object-name">Cofre del Tesoro</div><div class="object-mat">PLA Premium · Pintado a mano</div></div></div>
+      <div class="object-card"><div class="object-canvas-wrap" id="obj4"></div><div class="object-info"><div class="object-tag">Fantasy</div><div class="object-name">Hámster Samurai</div><div class="object-mat">PLA · Colores vivos</div></div></div>
+      <div class="object-card"><div class="object-canvas-wrap" id="obj5"></div><div class="object-info"><div class="object-tag">Fantasy</div><div class="object-name">Axolote Místico</div><div class="object-mat">Resina UV · Edición Limitada</div></div></div>
+      <div class="object-card"><div class="object-canvas-wrap" id="obj6"></div><div class="object-info"><div class="object-tag">Coleccionable</div><div class="object-name">Zorro Cyberpunk</div><div class="object-mat">Resina UV · Cromado</div></div></div>
+      <div class="object-card"><div class="object-canvas-wrap" id="obj7"></div><div class="object-info"><div class="object-tag">RPG</div><div class="object-name">Dado del Destino</div><div class="object-mat">PLA Premium · Acabado metálico</div></div></div>
+      <div class="object-card"><div class="object-canvas-wrap" id="obj8"></div><div class="object-info"><div class="object-tag">Coleccionable</div><div class="object-name">Dragón Tortuga</div><div class="object-mat">Resina UV · Pintado a mano</div></div></div>
+      <div class="object-card"><div class="object-canvas-wrap" id="obj9"></div><div class="object-info"><div class="object-tag">Decoración</div><div class="object-name">Faro de Alejandría</div><div class="object-mat">PLA · Acabado mate</div></div></div>
+      <div class="object-card"><div class="object-canvas-wrap" id="obj10"></div><div class="object-info"><div class="object-tag">Coleccionable</div><div class="object-name">Geisha Guerrera</div><div class="object-mat">Resina UV · Alta precisión</div></div></div>
+      <div class="object-card"><div class="object-canvas-wrap" id="obj11"></div><div class="object-info"><div class="object-tag">Fantasy</div><div class="object-name">Pulpo Kraken</div><div class="object-mat">Resina UV · Edición Limitada</div></div></div>
+      <div class="object-card"><div class="object-canvas-wrap" id="obj12"></div><div class="object-info"><div class="object-tag">Fantasy</div><div class="object-name">Rana Chamán</div><div class="object-mat">PLA · Colores vivos</div></div></div>
+      <div class="object-card"><div class="object-canvas-wrap" id="obj13"></div><div class="object-info"><div class="object-tag">Sci-Fi</div><div class="object-name">Robot Centinela</div><div class="object-mat">PLA Premium · Acabado mate</div></div></div>
+      <div class="object-card"><div class="object-canvas-wrap" id="obj14"></div><div class="object-info"><div class="object-tag">Sci-Fi</div><div class="object-name">Mecha Androide</div><div class="object-mat">Resina UV · Cromado</div></div></div>
+      <div class="object-card"><div class="object-canvas-wrap" id="obj15"></div><div class="object-info"><div class="object-tag">Decoración</div><div class="object-name">Runas Arcanas</div><div class="object-mat">PLA · Acabado envejecido</div></div></div>
+    </div>
+  </div>
+  <div class="carousel-progress" id="car-progress"></div>
+</section>
+
+<!-- VISUALIZADOR 3D -->
+<section id="visualizador">
+  <div class="reveal" style="text-align:center">
+    <span class="section-label">Visualizador IA</span>
+    <h2 class="section-title" style="max-width:100%">De foto a <span class="accent">modelo 3D</span></h2>
+    <p class="viz-hero-sub">Sube una foto de tu idea y nuestro equipo te enviará el modelo 3D listo para imprimir. También te mostramos cómo quedaría en PLA.</p>
+  </div>
+
+  <input type="file" id="viz-file-input" accept="image/*" style="display:none"/>
+
+  <div class="viz-upload-zone reveal" id="viz-upload-zone"
+    onclick="document.getElementById('viz-file-input').click()"
+    ondragover="event.preventDefault();this.classList.add('drag-over')"
+    ondragleave="this.classList.remove('drag-over')"
+    ondrop="event.preventDefault();this.classList.remove('drag-over');vizHandleFile(event.dataTransfer.files[0])">
+    <img class="viz-preview-img" id="viz-preview-img" alt="Preview"/>
+    <span class="viz-upload-icon" id="viz-upload-icon">📸</span>
+    <div class="viz-upload-title" id="viz-upload-title">Arrastra una foto aquí</div>
+    <div class="viz-upload-sub" id="viz-upload-sub">JPG · PNG · WEBP — o haz clic para seleccionar</div>
+    <button class="viz-change-btn" id="viz-change-btn" onclick="event.stopPropagation();document.getElementById('viz-file-input').click()">Cambiar imagen</button>
+  </div>
+
+  <div class="viz-generate-wrap reveal">
+    <button class="btn-generate" id="viz-generate-btn" disabled onclick="vizGenerate()">✦ Solicitar modelo 3D</button>
+  </div>
+
+  <div class="viz-error" id="viz-error"></div>
+
+  <div class="viz-progress" id="viz-progress">
+    <div class="viz-steps">
+      <div class="viz-step" id="vstep-0">
+        <div class="viz-step-icon">🔍</div>
+        <div class="viz-step-body"><div class="viz-step-name">Analizando imagen</div><div class="viz-step-desc">Detectando geometría, texturas y proporciones</div><div class="viz-progress-bar-wrap"><div class="viz-progress-bar" id="vpbar-0" style="width:0%"></div></div></div>
+        <div class="viz-step-badge wait" id="vbadge-0">Espera</div>
+      </div>
+      <div class="viz-step" id="vstep-1">
+        <div class="viz-step-icon">⚙️</div>
+        <div class="viz-step-body"><div class="viz-step-name">Generando modelo 3D</div><div class="viz-step-desc">IA construyendo geometría y mapeado UV</div><div class="viz-progress-bar-wrap"><div class="viz-progress-bar" id="vpbar-1" style="width:0%"></div></div></div>
+        <div class="viz-step-badge wait" id="vbadge-1">Espera</div>
+      </div>
+      <div class="viz-step" id="vstep-2">
+        <div class="viz-step-icon">🎨</div>
+        <div class="viz-step-body"><div class="viz-step-name">Aplicando texturas PBR</div><div class="viz-step-desc">Materiales fotorrealistas y mapa de normales</div><div class="viz-progress-bar-wrap"><div class="viz-progress-bar" id="vpbar-2" style="width:0%"></div></div></div>
+        <div class="viz-step-badge wait" id="vbadge-2">Espera</div>
+      </div>
+      <div class="viz-step" id="vstep-3">
+        <div class="viz-step-icon">🖨️</div>
+        <div class="viz-step-body"><div class="viz-step-name">Renderizando preview de impresión</div><div class="viz-step-desc">Simulando acabado PLA real con iluminación de estudio</div><div class="viz-progress-bar-wrap"><div class="viz-progress-bar" id="vpbar-3" style="width:0%"></div></div></div>
+        <div class="viz-step-badge wait" id="vbadge-3">Espera</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="viz-results" id="viz-results">
+    <div class="viz-result-card">
+      <div class="viz-result-header"><span class="viz-result-label">Modelo 3D interactivo</span><span class="viz-result-tag">Arrastra para rotar</span></div>
+      <div class="viz-3d-canvas-wrap" id="viz-3d-canvas"><div class="viz-3d-hint">Click + arrastrar para rotar · Scroll para zoom</div></div>
+      <div class="viz-result-footer">
+        <a id="viz-download-btn" class="viz-btn viz-btn-ghost" href="#" download="modelo.glb">⬇ Descargar GLB</a>
+        <button class="viz-btn viz-btn-primary" onclick="vizRequestPrint()">🖨️ Solicitar impresión</button>
+      </div>
+    </div>
+    <div class="viz-result-card">
+      <div class="viz-result-header"><span class="viz-result-label">Preview impresión PLA</span><span class="viz-result-tag">Simulación real</span></div>
+      <div class="viz-render-wrap" id="viz-render-wrap">
+        <div class="viz-render-overlay" id="viz-render-overlay">
+          <div class="viz-render-spinner"></div>
+          <span style="font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Renderizando...</span>
+        </div>
+        <canvas id="viz-render-canvas" style="width:100%;height:100%;display:none"></canvas>
+      </div>
+      <div class="viz-result-footer">
+        <button class="viz-btn viz-btn-ghost" onclick="vizDownloadRender()">⬇ Guardar imagen</button>
+        <button class="viz-btn viz-btn-primary" onclick="vizRequestPrint()">💬 Pedir presupuesto</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- THE LAB -->
+<section id="lab">
+  <div class="reveal">
+    <span class="section-label">The Lab</span>
+    <h2 class="section-title">Guía de <span class="accent">Materiales</span></h2>
+  </div>
+  <div class="lab-grid">
+    <div class="lab-card reveal-left" onmouseenter="this.querySelector('video').play()" onmouseleave="this.querySelector('video').pause()">
+      <video autoplay loop muted playsinline><source src="assets/videos/material-pla.mp4" type="video/mp4"/></video>
+      <div class="lab-card-overlay"></div>
+      <div class="lab-card-content">
+        <div class="lab-chip" style="background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);color:#4ade80"><span style="width:6px;height:6px;background:#4ade80;border-radius:50%;display:inline-block"></span> Más popular</div>
+        <div class="lab-mat-name">PLA</div>
+        <div class="lab-mat-desc">Biodegradable · Mate · Fácil de imprimir</div>
+        <div class="lab-specs"><span class="lab-spec">200°C</span><span class="lab-spec">Resistencia media</span><span class="lab-spec">Eco</span></div>
+      </div>
+    </div>
+    <div class="lab-card reveal" onmouseenter="this.querySelector('video').play()" onmouseleave="this.querySelector('video').pause()">
+      <video autoplay loop muted playsinline><source src="assets/videos/material-petg.mp4" type="video/mp4"/></video>
+      <div class="lab-card-overlay"></div>
+      <div class="lab-card-content">
+        <div class="lab-chip" style="background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.25);color:#60a5fa"><span style="width:6px;height:6px;background:#60a5fa;border-radius:50%;display:inline-block"></span> Flexible</div>
+        <div class="lab-mat-name">PETG</div>
+        <div class="lab-mat-desc">Translúcido · Alta resistencia · Impacto</div>
+        <div class="lab-specs"><span class="lab-spec">230°C</span><span class="lab-spec">Resistencia alta</span><span class="lab-spec">Flex</span></div>
+      </div>
+    </div>
+    <div class="lab-card reveal-right" onmouseenter="this.querySelector('video').play()" onmouseleave="this.querySelector('video').pause()">
+      <video autoplay loop muted playsinline><source src="assets/videos/material-resina.mp4" type="video/mp4"/></video>
+      <div class="lab-card-overlay"></div>
+      <div class="lab-card-content">
+        <div class="lab-chip" style="background:rgba(192,132,252,0.12);border:1px solid rgba(192,132,252,0.25);color:#c084fc"><span style="width:6px;height:6px;background:#c084fc;border-radius:50%;display:inline-block"></span> Ultra detalle</div>
+        <div class="lab-mat-name">Resina UV</div>
+        <div class="lab-mat-desc">Precisión quirúrgica · Acabado liso · 8K</div>
+        <div class="lab-specs"><span class="lab-spec">UV 405nm</span><span class="lab-spec">Detalle máximo</span><span class="lab-spec">Premium</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COTIZADOR -->
+<section id="cotizador">
+  <div class="reveal" style="text-align:center">
+    <span class="section-label">Cotizador</span>
+    <h2 class="section-title" style="max-width:100%">Calcula tu <span class="accent">impresión</span></h2>
+  </div>
+  <div class="cotizador-wrap">
+    <div class="cotizador-box reveal">
+      <input type="file" id="file-input" accept=".stl,.obj,.3mf" style="display:none" onchange="handleFile(this)"/>
+      <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()"
+        ondragover="event.preventDefault();this.style.borderColor='var(--teal)'"
+        ondragleave="this.style.borderColor=''"
+        ondrop="event.preventDefault();this.style.borderColor='';handleFile({files:event.dataTransfer.files})">
+        <span class="upload-icon" id="upload-icon">📁</span>
+        <div class="upload-title" id="upload-title">Arrastra tu archivo aquí</div>
+        <div class="upload-sub" id="upload-sub">STL · OBJ · 3MF — Máx. 50MB · Clic para seleccionar</div>
+      </div>
+      <div class="cot-selects">
+        <div class="cot-group"><label>Material</label><select id="cot-material" onchange="calcPrice()">
+          <optgroup label="Estándar">
+            <option value="15">PLA — Estándar</option>
+            <option value="19">PETG — Resistente</option>
+            <option value="17">ABS — Técnico</option>
+            <option value="20">ASA — Exterior UV</option>
+          </optgroup>
+          <optgroup label="Flexible">
+            <option value="23">TPU — Flexible</option>
+          </optgroup>
+          <optgroup label="Técnico avanzado">
+            <option value="29">PA — Nylon</option>
+            <option value="35">PC — Policarbonato</option>
+          </optgroup>
+          <optgroup label="Fibra de refuerzo">
+            <option value="52">CF — Fibra de Carbono</option>
+            <option value="45">GF — Fibra de Vidrio</option>
+          </optgroup>
+          <optgroup label="Soporte soluble">
+            <option value="32">PVA — Soporte soluble</option>
+            <option value="37">BVOH — Soporte soluble premium</option>
+          </optgroup>
+        </select></div>
+        <div class="cot-group"><label>Tamaño de pieza</label><select id="cot-tamanyo" onchange="calcPrice()">
+          <option value="1.0">Pequeña — hasta 10 cm</option>
+          <option value="2.0">Mediana — 10 a 20 cm</option>
+          <option value="3.5">Grande — 20 a 35 cm</option>
+          <option value="5.5">XL — más de 35 cm</option>
+        </select></div>
+        <div class="cot-group"><label>Calidad de capa</label><select id="cot-calidad" onchange="calcPrice()">
+          <option value="1.0">Draft — 0.3mm</option>
+          <option value="1.3">Standard — 0.2mm</option>
+          <option value="1.8">Fine — 0.1mm</option>
+          <option value="2.5">Ultra — 0.05mm</option>
+        </select></div>
+        <div class="cot-group"><label>Relleno (Infill)</label><select id="cot-infill" onchange="calcPrice()">
+          <option value="1.0">10% — Ligero</option>
+          <option value="1.2" selected>20% — Estándar</option>
+          <option value="1.5">50% — Resistente</option>
+          <option value="2.0">100% — Sólido</option>
+        </select></div>
+        <div class="cot-group"><label>Cantidad</label><input id="cot-qty" type="number" value="1" min="1" oninput="calcPrice()"/></div>
+      </div>
+      <div class="cot-result">
+        <div>
+          <div class="cot-label">Estimación</div>
+          <div class="cot-price" id="cot-price-val">— €</div>
+          <div id="cot-price-sub" style="font-size:13px;color:var(--muted);margin-top:4px">Sube un archivo para calcular</div>
+        </div>
+        <button class="btn-primary" onclick="submitCot()">Solicitar cotización</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MONITOR -->
+<section id="monitor">
+  <div class="reveal" style="text-align:center;margin-bottom:64px">
+    <span class="section-label">Live Status</span>
+    <h2 class="section-title" style="max-width:100%">Monitoreo en <span class="accent">tiempo real</span></h2>
+  </div>
+  <div class="monitor-box reveal">
+    <div class="monitor-header">
+      <div class="monitor-status"><span style="width:8px;height:8px;background:var(--teal);border-radius:50%;animation:pulse 2s infinite;display:inline-block"></span> Estado: Calibrando</div>
+      <div class="monitor-pct">94% completado</div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="monitor-metrics">
+      <div class="metric"><span class="metric-icon">🌡️</span><div class="metric-val">215°C</div><div class="metric-key">Extrusor</div></div>
+      <div class="metric"><span class="metric-icon">🛏️</span><div class="metric-val">60°C</div><div class="metric-key">Cama caliente</div></div>
+      <div class="metric"><span class="metric-icon">📏</span><div class="metric-val">0.05mm</div><div class="metric-key">Altura de capa</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-grid">
+    <div>
+      <div class="footer-brand"><div class="logo-dot" style="width:28px;height:28px;font-size:14px">◈</div>Toy3DMaker</div>
+      <p class="footer-desc">Transformando la imaginación en realidad tangible mediante ingeniería de precisión y pasión por los juguetes.</p>
+    </div>
+    <div>
+      <div class="footer-col-title">Navegación</div>
+      <ul class="footer-links">
+        <li><a href="#objects-section">Galería</a></li>
+        <li><a href="#cotizador">Cotizador</a></li>
+        <li><a href="#lab">Materiales</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="footer-col-title">Soporte</div>
+      <ul class="footer-links">
+        <li><a href="#cotizador">Solicitar ayuda</a></li>
+        <li><a href="#lab">Guía de Materiales</a></li>
+        <li><a href="envios.html">Envíos</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="footer-col-title">Legal</div>
+      <ul class="footer-links">
+        <li><a href="privacidad.html">Política de Privacidad</a></li>
+        <li><a href="terminos.html">Términos y Condiciones</a></li>
+        <li><a href="cookies.html">Política de Cookies</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span class="footer-copy">© 2026 Toy3DMaker. Engineered for Imagination.</span>
+    <span class="footer-copy">v2.0 · Hecho en el Futuro</span>
+  </div>
+</footer>
+
+<script>
+const lenis = new Lenis({ lerp: 0.15, smoothWheel: true, syncTouch: false });
+lenis.on('scroll', () => ScrollTrigger && ScrollTrigger.update());
+gsap.ticker.add((time) => lenis.raf(time * 1000));
+gsap.ticker.lagSmoothing(0);
+
+const cursor = document.getElementById('cursor');
+const cursorRing = document.getElementById('cursor-ring');
+let mx = 0, my = 0, rx = 0, ry = 0;
+document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; cursor.style.left = mx+'px'; cursor.style.top = my+'px'; });
+(function loopCursor() { rx += (mx - rx) * 0.12; ry += (my - ry) * 0.12; cursorRing.style.left = rx+'px'; cursorRing.style.top = ry+'px'; requestAnimationFrame(loopCursor); })();
+document.querySelectorAll('a, button, .feature-card, .lab-card, .object-card, .upload-zone, .float-pill').forEach(el => {
+  el.addEventListener('mouseenter', () => { cursor.style.width='20px'; cursor.style.height='20px'; cursor.style.background='#FF4500'; cursorRing.style.width='60px'; cursorRing.style.height='60px'; cursorRing.style.borderColor='rgba(255,69,0,0.4)'; });
+  el.addEventListener('mouseleave', () => { cursor.style.width='12px'; cursor.style.height='12px'; cursor.style.background='#4bdad7'; cursorRing.style.width='40px'; cursorRing.style.height='40px'; cursorRing.style.borderColor='rgba(75,218,215,0.5)'; });
+});
+
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', () => nav.classList.toggle('scrolled', window.scrollY > 60));
+
+const pCanvas = document.getElementById('particle-canvas');
+const pCtx = pCanvas.getContext('2d');
+const resizePC = () => { pCanvas.width = window.innerWidth; pCanvas.height = window.innerHeight; };
+resizePC(); window.addEventListener('resize', resizePC);
+const ptcls = [];
+document.addEventListener('mousemove', e => {
+  for (let i = 0; i < 2; i++) ptcls.push({ x: e.clientX+(Math.random()-.5)*8, y: e.clientY+(Math.random()-.5)*8, vx: (Math.random()-.5)*1.2, vy: (Math.random()-.5)*1.2-.8, life: 1, size: Math.random()*3+1, color: Math.random()>.5?'#4bdad7':'#FF4500' });
+});
+for (let i = 0; i < 40; i++) ptcls.push({ x: Math.random()*window.innerWidth, y: Math.random()*window.innerHeight, vx: (Math.random()-.5)*.2, vy: -Math.random()*.3-.1, life: Math.random(), size: Math.random()*1.5+.3, color: Math.random()>.5?'rgba(75,218,215,0.3)':'rgba(0,102,255,0.25)', ambient: true });
+(function loopP() {
+  pCtx.clearRect(0,0,pCanvas.width,pCanvas.height);
+  for (let i = ptcls.length-1; i >= 0; i--) {
+    const p = ptcls[i]; p.x+=p.vx; p.y+=p.vy; p.life-=p.ambient?.002:.022;
+    if (p.life<=0) { if(p.ambient){p.x=Math.random()*window.innerWidth;p.y=window.innerHeight+10;p.life=Math.random()*.5+.4;}else{ptcls.splice(i,1);continue;} }
+    pCtx.save(); pCtx.globalAlpha=p.life*(p.ambient?.5:.85); pCtx.fillStyle=p.color; pCtx.shadowBlur=p.ambient?3:6; pCtx.shadowColor=p.color; pCtx.beginPath(); pCtx.arc(p.x,p.y,p.size,0,Math.PI*2); pCtx.fill(); pCtx.restore();
+  }
+  requestAnimationFrame(loopP);
+})();
+
+gsap.utils.toArray('.reveal').forEach(el => {
+  gsap.fromTo(el, { opacity:0, y:50 }, { opacity:1, y:0, duration:1.2, ease:'power3.out', scrollTrigger:{ trigger:el, start:'top 95%', toggleActions:'play none none reset' } });
+});
+gsap.utils.toArray('.reveal-left').forEach(el => {
+  gsap.fromTo(el, { opacity:0, x:-60 }, { opacity:1, x:0, duration:1.2, ease:'power3.out', scrollTrigger:{ trigger:el, start:'top 95%', toggleActions:'play none none reset' } });
+});
+gsap.utils.toArray('.reveal-right').forEach(el => {
+  gsap.fromTo(el, { opacity:0, x:60 }, { opacity:1, x:0, duration:1.2, ease:'power3.out', scrollTrigger:{ trigger:el, start:'top 95%', toggleActions:'play none none reset' } });
+});
+
+const videoObs = new IntersectionObserver((entries) => {
+  entries.forEach(e => { const v = e.target.querySelector('video'); if (!v) return; if (e.isIntersecting) v.play().catch(() => {}); else v.pause(); });
+}, { threshold: 0.25 });
+document.querySelectorAll('.lab-card').forEach(c => videoObs.observe(c));
+
+(function() {
+  const cards = Array.from(document.querySelectorAll('.object-card'));
+  const track = document.getElementById('carousel-track');
+  const progWrap = document.getElementById('car-progress');
+  const CARD_W = 300, GAP = 28, STEP = CARD_W + GAP;
+  const n = cards.length;
+  let activeCardIdx = 0;
+
+  cards.forEach((_, i) => {
+    const p = document.createElement('div');
+    p.className = 'carousel-pip';
+    p.style.width = i === 0 ? '28px' : '8px';
+    progWrap.appendChild(p);
+  });
+
+  function setActive(idx) {
+    idx = Math.max(0, Math.min(Math.round(idx), n - 1));
+    activeCardIdx = idx;
+    cards.forEach((c, i) => c.classList.toggle('c-active', i === idx));
+    document.querySelectorAll('.carousel-pip').forEach((p, i) => { p.classList.toggle('active', i === idx); p.style.width = i === idx ? '28px' : '8px'; });
+  }
+
+  function startX() { return (window.innerWidth - CARD_W) / 2; }
+  gsap.set(track, { x: startX() });
+  setActive(0);
+
+  function goToCard(idx) {
+    idx = Math.max(0, Math.min(idx, n - 1));
+    setActive(idx);
+    gsap.to(track, { x: startX() - idx * STEP, duration: 0.5, ease: 'power3.out' });
+  }
+
+  const section = document.getElementById('objects-section');
+  section.addEventListener('wheel', e => {
+    const active = cards[activeCardIdx];
+    if (!active) return;
+    const r = active.getBoundingClientRect();
+    const overCenter = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    if (!overCenter) return;
+    e.preventDefault(); e.stopPropagation();
+    goToCard(e.deltaY > 0 ? activeCardIdx + 1 : activeCardIdx - 1);
+  }, { passive: false });
+
+  let dragStartX = null, dragStartTrackX = 0;
+  section.addEventListener('mousedown', e => {
+    const active = cards[activeCardIdx];
+    if (!active) return;
+    const r = active.getBoundingClientRect();
+    const overCenter = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    if (!overCenter || e.button !== 0) return;
+    dragStartX = e.clientX;
+    dragStartTrackX = parseFloat(gsap.getProperty(track, 'x')) || startX();
+    section.style.cursor = 'grabbing'; e.preventDefault();
+  });
+  window.addEventListener('mousemove', e => {
+    if (dragStartX === null) return;
+    const delta = e.clientX - dragStartX;
+    const newX = Math.max(startX() - STEP*(n-1), Math.min(startX(), dragStartTrackX + delta));
+    gsap.set(track, { x: newX });
+    setActive(Math.round((startX() - newX) / STEP));
+  });
+  window.addEventListener('mouseup', () => { if (dragStartX === null) return; dragStartX = null; section.style.cursor = 'default'; goToCard(activeCardIdx); });
+  window.addEventListener('resize', () => { gsap.set(track, { x: startX() - activeCardIdx * STEP }); });
+
+  let touchStartX = null;
+  section.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+  section.addEventListener('touchend', e => {
+    if (touchStartX === null) return;
+    const delta = e.changedTouches[0].clientX - touchStartX;
+    touchStartX = null;
+    if (Math.abs(delta) < 40) return;
+    goToCard(delta < 0 ? activeCardIdx + 1 : activeCardIdx - 1);
+  }, { passive: true });
+})();
+
+function loadMeshyStatic(cardIdx, containerId, glbFile, lightColors, targetH = 1.5) {
+  const cont = document.getElementById(containerId);
+  if (!cont) return;
+  const mr = new THREE.WebGLRenderer({ antialias: false, alpha: true });
+  mr.setSize(300, 260); mr.setPixelRatio(1); mr.setClearColor(0, 0);
+  cont.appendChild(mr.domElement);
+  const ms = new THREE.Scene(), mc = new THREE.PerspectiveCamera(50, 300/260, 0.001, 100);
+  ms.add(new THREE.AmbientLight(0xffffff, 0.9));
+  const l1 = new THREE.PointLight(lightColors[0], 3, 50); l1.position.set(-3, 3, 3); ms.add(l1);
+  const l2 = new THREE.PointLight(lightColors[1], 2, 50); l2.position.set(3, -2, 3); ms.add(l2);
+  let model = null, rafId = null;
+  new THREE.GLTFLoader().load(glbFile, function(gltf) {
+    model = gltf.scene;
+    let hasArmature = false;
+    model.traverse(c => { if (c.name === 'Armature') { c.scale.set(1,1,1); hasArmature = true; } });
+    const geoBox = new THREE.Box3();
+    model.traverse(c => { if (c.isMesh || c.isSkinnedMesh) { c.geometry.computeBoundingBox(); geoBox.union(c.geometry.boundingBox); } });
+    const geoSize = geoBox.getSize(new THREE.Vector3());
+    const finalScale = hasArmature ? 0.01 * (targetH / geoSize.y) : (targetH / geoSize.y);
+    model.scale.setScalar(finalScale);
+    const center = geoBox.getCenter(new THREE.Vector3());
+    model.position.set(-center.x * finalScale, -geoBox.min.y * finalScale, -center.z * finalScale);
+    ms.add(model);
+    mc.position.set(0, targetH * 0.5, targetH * 1.6);
+    mc.lookAt(0, targetH * 0.45, 0);
+    mc.updateProjectionMatrix();
+    mr.render(ms, mc);
+  }, undefined, err => console.warn(containerId, err));
+  const card = cont.closest('.object-card');
+  card.addEventListener('mouseenter', () => {
+    if (!model || rafId) return;
+    function spin() { rafId = requestAnimationFrame(spin); model.rotation.y += 0.022; mr.render(ms, mc); }
+    spin();
+  });
+  card.addEventListener('mouseleave', () => { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } });
+}
+
+function startModelLoading() {
+  const models = [
+    [0,'obj0','assets/models/dragon.glb',[0xff4500,0xffaa00]],
+    [1,'obj1','assets/models/caballero.glb',[0xffaa00,0x4bdad7]],
+    [2,'obj2','assets/models/tori.glb',[0xff4500,0xff8800]],
+    [3,'obj3','assets/models/cofre.glb',[0xffcc00,0xff4500]],
+    [4,'obj4','assets/models/capybara.glb',[0xffaa55,0x4bdad7]],
+    [5,'obj5','assets/models/axolote.glb',[0xff69b4,0x9b59b6]],
+    [6,'obj6','assets/models/cyberpunk.glb',[0xff6600,0x00ccff]],
+    [7,'obj7','assets/models/dado.glb',[0xaaaaff,0xffffff]],
+    [8,'obj8','assets/models/dragon_turtle.glb',[0x00cc66,0xff4500]],
+    [9,'obj9','assets/models/faro.glb',[0xffffff,0xffcc00]],
+    [10,'obj10','assets/models/geisha.glb',[0xff3366,0xffaacc]],
+    [11,'obj11','assets/models/pulpo.glb',[0x4466ff,0x00ccff]],
+    [12,'obj12','assets/models/rana.glb',[0x44cc44,0xffff00]],
+    [13,'obj13','assets/models/robot1.glb',[0xaaaaaa,0x4bdad7]],
+    [14,'obj14','assets/models/robot2.glb',[0xcccccc,0xff6600]],
+    [15,'obj15','assets/models/runas.glb',[0x9933ff,0xffcc00]],
+  ];
+  models.forEach(([idx, id, glb, colors], i) => { setTimeout(() => loadMeshyStatic(idx, id, glb, colors), i * 80); });
+}
+
+let modelsStarted = false;
+new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting && !modelsStarted) { modelsStarted = true; startModelLoading(); }
+}, { rootMargin: '400px' }).observe(document.getElementById('objects-section'));
+
+ScrollTrigger.create({
+  trigger: '#monitor', start: 'top 80%',
+  onEnter: () => gsap.to('#progress-fill', { width:'94%', duration:2.5, ease:'power2.out' })
+});
+
+function handleFile(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const validExts = ['.stl', '.obj', '.3mf'];
+  const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+  if (!validExts.includes(ext)) { alert('Formato no soportado. Usa STL, OBJ o 3MF.'); return; }
+  document.getElementById('upload-icon').textContent = '✅';
+  document.getElementById('upload-title').textContent = file.name;
+  document.getElementById('upload-sub').textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB · ${ext.toUpperCase()}`;
+  calcPrice();
+}
+
+function calcPrice() {
+  const file = document.getElementById('file-input').files[0];
+  if (!file) return;
+
+  const basePrice  = parseFloat(document.getElementById('cot-material').value) || 8;
+  const sizeFactor = parseFloat(document.getElementById('cot-tamanyo').value)  || 1.0;
+  const qualMult   = parseFloat(document.getElementById('cot-calidad').value)  || 1.0;
+  const infillMult = parseFloat(document.getElementById('cot-infill').value)   || 1.0;
+  const qty        = Math.max(1, parseInt(document.getElementById('cot-qty').value) || 1);
+
+  const unitPrice = Math.max(8, basePrice * sizeFactor * qualMult * infillMult);
+  const total     = unitPrice * qty;
+
+  document.getElementById('cot-price-val').textContent = total.toFixed(0) + ' €';
+  document.getElementById('cot-price-sub').textContent = qty > 1
+    ? `${unitPrice.toFixed(0)} € × ${qty} uds · estimación orientativa`
+    : 'estimación orientativa';
+}
+
+function submitCot() {
+  const file = document.getElementById('file-input').files[0];
+  if (!file) { document.querySelector('.upload-zone').style.borderColor = 'var(--orange)'; document.getElementById('upload-title').textContent = '⚠ Sube un archivo primero'; return; }
+
+  const getText = id => { const s = document.getElementById(id); return s.options[s.selectedIndex].text; };
+  const material = getText('cot-material');
+  const tamanyo  = getText('cot-tamanyo');
+  const calidad  = getText('cot-calidad');
+  const infill   = getText('cot-infill');
+  const qty      = Math.max(1, parseInt(document.getElementById('cot-qty').value) || 1);
+  const precio   = document.getElementById('cot-price-val').textContent;
+
+  const msg = encodeURIComponent(
+    `Hola! Quiero solicitar una cotización de impresión 3D:\n\n` +
+    `📁 Archivo: ${file.name}\n` +
+    `🧱 Material: ${material}\n` +
+    `📐 Tamaño: ${tamanyo}\n` +
+    `⚙️ Calidad: ${calidad}\n` +
+    `🔩 Relleno: ${infill}\n` +
+    `📦 Cantidad: ${qty} unidad(es)\n` +
+    `💰 Precio estimado: ${precio}\n\n` +
+    `¿Podéis confirmar el presupuesto final?`
+  );
+  window.open(`https://wa.me/34663486100?text=${msg}`, '_blank');
+  const btn = document.querySelector('#cotizador .btn-primary');
+  btn.textContent = '✓ Abriendo WhatsApp...'; btn.style.background = '#25D366';
+  setTimeout(() => { btn.textContent = 'Solicitar cotización'; btn.style.background = ''; }, 3000);
+}
+
+// VIDEO SYSTEM
+const loopVideo = document.getElementById('hero-bg-video');
+const bridgeVideo = document.getElementById('loop-bridge-video');
+const exitVideo = document.getElementById('hero-exit-video');
+const returnVideo = document.getElementById('return-video');
+const andysBg = document.getElementById('andys-room-bg');
+const heroContent = document.querySelector('.hero-content');
+const scrollHint = document.querySelector('.scroll-hint');
+const storyOverlay = document.getElementById('story-overlay');
+const storyLines = document.querySelectorAll('.story-line');
+let videoState = 'loop';
+
+function waitReady(video) {
+  return new Promise(resolve => {
+    if (video.readyState >= 3) { resolve(); return; }
+    const onReady = () => { video.removeEventListener('canplaythrough', onReady); resolve(); };
+    video.addEventListener('canplaythrough', onReady);
+    video.load();
+  });
+}
+
+loopVideo.addEventListener('playing', () => {
+  setTimeout(() => { if (bridgeVideo.readyState < 3) bridgeVideo.load(); if (exitVideo.readyState < 3) exitVideo.load(); }, 1000);
+}, { once: true });
+
+loopVideo.addEventListener('ended', async () => {
+  if (videoState !== 'loop') return;
+  await waitReady(bridgeVideo);
+  bridgeVideo.currentTime = 0; loopVideo.style.opacity = '0'; bridgeVideo.style.opacity = '1'; bridgeVideo.play().catch(() => {});
+});
+bridgeVideo.addEventListener('ended', async () => {
+  if (videoState !== 'loop') return;
+  await waitReady(loopVideo);
+  loopVideo.currentTime = 0; bridgeVideo.style.opacity = '0'; loopVideo.style.opacity = '1'; loopVideo.play().catch(() => {});
+});
+
+let exitPreloaded = false;
+async function preloadExit() { if (exitPreloaded) return; exitPreloaded = true; await waitReady(exitVideo); exitVideo.currentTime = 0; }
+window.addEventListener('wheel', preloadExit, { once: true, passive: true });
+window.addEventListener('touchstart', preloadExit, { once: true, passive: true });
+
+function startExit() {
+  if (videoState !== 'loop') return;
+  videoState = 'exiting';
+  loopVideo.style.opacity = '0'; bridgeVideo.style.opacity = '0'; bridgeVideo.pause();
+  const doPlay = () => { exitVideo.style.opacity = '1'; exitVideo.play().catch(() => {}); };
+  if (exitVideo.readyState >= 3) { exitVideo.currentTime = 0; exitVideo.addEventListener('seeked', doPlay, { once: true }); }
+  else { waitReady(exitVideo).then(() => { exitVideo.currentTime = 0; doPlay(); }); }
+}
+exitVideo.addEventListener('ended', () => {
+  if (videoState !== 'exiting') return;
+  videoState = 'gone'; exitVideo.style.opacity = '0'; andysBg.style.opacity = '1';
+  if (returnVideo.readyState < 3) returnVideo.load();
+});
+
+function startReturn() {
+  if (videoState !== 'gone') return;
+  videoState = 'returning'; andysBg.style.opacity = '0';
+  const doReturn = () => { returnVideo.style.opacity = '1'; returnVideo.play().catch(() => {}); };
+  if (returnVideo.readyState >= 3) { returnVideo.currentTime = 0; returnVideo.addEventListener('seeked', doReturn, { once: true }); }
+  else { waitReady(returnVideo).then(() => { returnVideo.currentTime = 0; doReturn(); }); }
+}
+returnVideo.addEventListener('ended', async () => {
+  if (videoState !== 'returning') return;
+  videoState = 'loop'; await waitReady(loopVideo);
+  loopVideo.currentTime = 0; returnVideo.style.opacity = '0'; loopVideo.style.opacity = '1'; loopVideo.play().catch(() => {});
+});
+
+const featuresSection = document.getElementById('features');
+let lastScrollY = window.scrollY;
+window.addEventListener('scroll', () => {
+  const currentScrollY = window.scrollY;
+  const scrollingUp = currentScrollY < lastScrollY;
+  lastScrollY = currentScrollY;
+  if (videoState === 'gone' && scrollingUp) {
+    const featuresTop = featuresSection.getBoundingClientRect().top;
+    if (featuresTop >= 0 && featuresTop <= window.innerHeight) startReturn();
+  }
+}, { passive: true });
+
+ScrollTrigger.create({
+  trigger: '#hero-spacer', start: 'top top', end: 'bottom top', scrub: true,
+  onUpdate(self) {
+    const p = self.progress;
+    const heroFade = Math.max(0, 1 - p / 0.08);
+    heroContent.style.opacity = String(heroFade);
+    heroContent.style.transform = `translateY(${-p * 1200}px)`;
+    if (scrollHint) scrollHint.style.opacity = String(Math.max(0, heroFade * 0.35));
+    if (p > 0.02) startExit();
+    if (p > 0.02) {
+      const storyProgress = (p - 0.02) / 0.98;
+      const ease = t => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
+      let overlayOp = 1;
+      if (storyProgress < 0.15) overlayOp = storyProgress / 0.15;
+      else if (storyProgress > 0.85) overlayOp = (1 - storyProgress) / 0.15;
+      storyOverlay.style.opacity = String(Math.max(0, overlayOp));
+      const yPos = 50 - (ease(storyProgress) * 100);
+      storyOverlay.style.transform = `translateY(${yPos}vh)`;
+      storyLines.forEach((line, i) => {
+        const lineDelay = i * 0.12, lineStart = 0.05 + lineDelay, lineEnd = lineStart + 0.25;
+        const localP = Math.max(0, Math.min(1, (storyProgress - lineStart) / (lineEnd - lineStart)));
+        const easedLocalP = ease(localP);
+        line.style.opacity = String(easedLocalP);
+        line.style.transform = `translateY(${60 * (1 - easedLocalP)}px)`;
+      });
+    } else { storyOverlay.style.opacity = '0'; }
+  }
+});
+
+// VISUALIZADOR IA
+let vizImageDataUrl = null, vizGlbUrl = null, vizPollTimer = null, vizRenderer = null, vizRenderRenderer = null;
+
+document.getElementById('viz-file-input').addEventListener('change', e => { if (e.target.files[0]) vizHandleFile(e.target.files[0]); });
+
+function vizCompressImage(dataUrl, maxPx = 1024, quality = 0.88) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      resolve(c.toDataURL('image/jpeg', quality));
+    };
+    img.src = dataUrl;
+  });
+}
+
+function vizHandleFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    vizImageDataUrl = await vizCompressImage(e.target.result);
+    const img = document.getElementById('viz-preview-img');
+    img.src = vizImageDataUrl; img.classList.add('visible');
+    document.getElementById('viz-upload-icon').style.display = 'none';
+    document.getElementById('viz-upload-title').style.display = 'none';
+    document.getElementById('viz-upload-sub').style.display = 'none';
+    document.getElementById('viz-change-btn').classList.add('visible');
+    document.getElementById('viz-upload-zone').classList.add('has-image');
+    document.getElementById('viz-generate-btn').disabled = false;
+    document.getElementById('viz-results').classList.remove('visible');
+    document.getElementById('viz-progress').classList.remove('visible');
+    vizSetError('');
+  };
+  reader.readAsDataURL(file);
+}
+
+function vizSetError(msg) { const el = document.getElementById('viz-error'); el.textContent = msg; el.classList.toggle('visible', !!msg); }
+
+function vizSetStep(idx, state, progress) {
+  const step = document.getElementById(`vstep-${idx}`);
+  const badge = document.getElementById(`vbadge-${idx}`);
+  const pbar = document.getElementById(`vpbar-${idx}`);
+  step.className = `viz-step ${state}`;
+  badge.className = `viz-step-badge ${state === 'active' ? 'running' : state === 'done' ? 'done' : 'wait'}`;
+  badge.textContent = state === 'active' ? 'Procesando' : state === 'done' ? '✓ Listo' : 'Espera';
+  if (pbar && progress != null) pbar.style.width = progress + '%';
+  const icon = step.querySelector('.viz-step-icon');
+  icon.style.animation = state === 'active' ? 'viz-spin .8s linear infinite' : 'none';
+}
+
+async function vizGenerate() {
+  if (!vizImageDataUrl) return;
+  const btn = document.getElementById('viz-generate-btn');
+  btn.disabled = true; btn.textContent = '⟳ Analizando imagen...';
+  vizSetError('');
+  document.getElementById('viz-progress').classList.add('visible');
+  document.getElementById('viz-results').classList.remove('visible');
+  [0,1,2,3].forEach(i => vizSetStep(i, '', null));
+
+  // Paso 1 — animación breve de análisis
+  vizSetStep(0, 'active', 30);
+  await new Promise(r => setTimeout(r, 800));
+  vizSetStep(0, 'active', 80);
+  await new Promise(r => setTimeout(r, 600));
+  vizSetStep(0, 'done', 100);
+
+  // Paso 2 — envío al equipo
+  vizSetStep(1, 'active', 50);
+  btn.textContent = '⟳ Enviando a nuestro equipo...';
+  await new Promise(r => setTimeout(r, 700));
+  vizSetStep(1, 'done', 100);
+
+  document.getElementById('viz-progress').classList.remove('visible');
+  btn.textContent = '✓ Solicitud enviada';
+  btn.style.background = '#25D366';
+
+  const fileName = document.getElementById('viz-file-input').files[0]?.name || 'imagen';
+  const msg = encodeURIComponent(
+    `Hola! Acabo de subir una foto en vuestra web para solicitar un modelo 3D.\n\n` +
+    `📸 Imagen: ${fileName}\n\n` +
+    `¿Podéis hacer el modelo 3D y decirme el precio de impresión?`
+  );
+  window.open(`https://wa.me/34663486100?text=${msg}`, '_blank');
+
+  setTimeout(() => { btn.textContent = '✦ Solicitar modelo 3D'; btn.style.background = ''; btn.disabled = false; }, 4000);
+
+  if (false) { // código original desactivado — activar cuando exista /api/generate-3d
+    const genRes = await fetch('/api/generate-3d', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: vizImageDataUrl }) });
+    if (!genRes.ok) { const err = await genRes.json().catch(() => ({ error: 'Error de red' })); throw new Error(err.error || `HTTP ${genRes.status}`); }
+    const { taskId } = await genRes.json();
+    vizSetStep(0, 'done', 100); vizSetStep(1, 'active', 5);
+    let pollCount = 0;
+    vizPollTimer = setInterval(async () => {
+      pollCount++;
+      try {
+        const pollRes = await fetch(`/api/poll-3d?taskId=${taskId}`);
+        const data = await pollRes.json();
+        if (data.status === 'IN_PROGRESS' || data.status === 'PENDING') {
+          const p = data.progress ?? 0;
+          if (p < 60) { vizSetStep(1, 'active', Math.min(p * 1.5, 95)); }
+          else { vizSetStep(1, 'done', 100); vizSetStep(2, 'active', Math.min((p - 60) * 2.5, 95)); }
+          return;
+        }
+        if (data.status === 'FAILED') { clearInterval(vizPollTimer); throw new Error(data.error || 'El modelo no se pudo generar.'); }
+        if (data.status === 'SUCCEEDED') {
+          clearInterval(vizPollTimer);
+          vizSetStep(1, 'done', 100); vizSetStep(2, 'done', 100); vizSetStep(3, 'active', 20);
+          vizGlbUrl = data.glbUrl;
+          document.getElementById('viz-download-btn').href = data.glbDirect || data.glbUrl;
+          document.getElementById('viz-results').classList.add('visible');
+          document.getElementById('viz-results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+          await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+          await vizRenderModel(vizGlbUrl);
+          vizSetStep(3, 'done', 100);
+          btn.disabled = false; btn.textContent = '✦ Solicitar otro';
+        }
+      } catch(e) { clearInterval(vizPollTimer); vizSetError(String(e)); btn.disabled = false; btn.textContent = '✦ Solicitar modelo 3D'; }
+    }, 4000);
+    setTimeout(() => { if (vizPollTimer) { clearInterval(vizPollTimer); vizSetError('La generación tardó demasiado. Inténtalo de nuevo.'); btn.disabled = false; btn.textContent = '✦ Solicitar modelo 3D'; } }, 8 * 60 * 1000);
+  } // fin if(false)
+}
+
+async function vizRenderModel(glbUrl) { await vizBuildInteractiveViewer(glbUrl); await vizBuildPlaPreview(glbUrl); }
+
+function vizBuildInteractiveViewer(glbUrl) {
+  return new Promise((resolve) => {
+    const container = document.getElementById('viz-3d-canvas');
+    if (vizRenderer) { vizRenderer.dispose(); container.querySelectorAll('canvas').forEach(c => c.remove()); }
+    const w = container.clientWidth || 440, h = 340;
+    vizRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    vizRenderer.setSize(w, h); vizRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    vizRenderer.setClearColor(0, 0); vizRenderer.shadowMap.enabled = true;
+    container.insertBefore(vizRenderer.domElement, container.querySelector('.viz-3d-hint'));
+    const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(45, w / h, 0.01, 1000);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const key = new THREE.DirectionalLight(0xfff5e0, 2.5); key.position.set(3, 4, 3); scene.add(key);
+    const fill = new THREE.DirectionalLight(0xd0e8ff, 1.2); fill.position.set(-3, 1, 2); scene.add(fill);
+    const rim = new THREE.DirectionalLight(0x4bdad7, 1.0); rim.position.set(0, -2, -3); scene.add(rim);
+    new THREE.GLTFLoader().load(glbUrl, gltf => {
+      const model = gltf.scene;
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3()); const maxD = Math.max(size.x, size.y, size.z);
+      model.scale.setScalar(2 / maxD);
+      const center = box.getCenter(new THREE.Vector3()); model.position.sub(center.multiplyScalar(2 / maxD));
+      scene.add(model); camera.position.set(0, 0.5, 3.2); camera.lookAt(0, 0, 0);
+      let isDrag = false, lastX = 0, lastY = 0, rotX = 0, rotY = 0, targetRotX = 0, targetRotY = 0, zoom = 3.2;
+      vizRenderer.domElement.addEventListener('mousedown', e => { isDrag = true; lastX = e.clientX; lastY = e.clientY; });
+      window.addEventListener('mouseup', () => isDrag = false);
+      vizRenderer.domElement.addEventListener('mousemove', e => { if (!isDrag) return; targetRotY += (e.clientX - lastX) * 0.008; targetRotX += (e.clientY - lastY) * 0.005; targetRotX = Math.max(-0.6, Math.min(0.6, targetRotX)); lastX = e.clientX; lastY = e.clientY; });
+      vizRenderer.domElement.addEventListener('wheel', e => { zoom += e.deltaY * 0.005; zoom = Math.max(1.5, Math.min(6, zoom)); }, { passive: true });
+      (function loop() {
+        requestAnimationFrame(loop);
+        if (!isDrag) targetRotY += 0.004;
+        rotY += (targetRotY - rotY) * 0.08; rotX += (targetRotX - rotX) * 0.08;
+        model.rotation.y = rotY; model.rotation.x = rotX;
+        camera.position.z += (zoom - camera.position.z) * 0.08;
+        vizRenderer.render(scene, camera);
+      })();
+      resolve();
+    }, undefined, err => { console.warn('[viz viewer]', err); resolve(); });
+  });
+}
+
+function vizBuildPlaPreview(glbUrl) {
+  return new Promise((resolve) => {
+    const canvas = document.getElementById('viz-render-canvas');
+    const overlay = document.getElementById('viz-render-overlay');
+    if (vizRenderRenderer) vizRenderRenderer.dispose();
+    const w = canvas.parentElement.clientWidth || 440, h = 340;
+    vizRenderRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, preserveDrawingBuffer: true });
+    vizRenderRenderer.setSize(w, h); vizRenderRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    vizRenderRenderer.setClearColor(0xf7f7f5, 1); vizRenderRenderer.shadowMap.enabled = true;
+    vizRenderRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    canvas.style.display = 'block';
+    const scene = new THREE.Scene(); scene.background = new THREE.Color(0xf7f7f5);
+    const camera = new THREE.PerspectiveCamera(40, w / h, 0.01, 1000);
+    scene.add(new THREE.AmbientLight(0xfff8f0, 0.4));
+    const key = new THREE.DirectionalLight(0xfffaf0, 3.5); key.position.set(4, 6, 4); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.001; scene.add(key);
+    const fill = new THREE.DirectionalLight(0xe8f0ff, 1.5); fill.position.set(-4, 2, 3); scene.add(fill);
+    scene.add(new THREE.DirectionalLight(0xffffff, 1.0).position.set(0, 8, 0) && new THREE.DirectionalLight(0xffffff, 1.0));
+    const plaMaterial = new THREE.MeshStandardMaterial({ color: 0xf5f5f3, roughness: 0.78, metalness: 0.0 });
+    const platform = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.06, 64), new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.6, metalness: 0.3 }));
+    platform.receiveShadow = true; platform.position.y = -0.03; scene.add(platform);
+    new THREE.GLTFLoader().load(glbUrl, gltf => {
+      const model = gltf.scene.clone(true);
+      model.traverse(child => { if (child.isMesh) { child.material = plaMaterial; child.castShadow = true; child.receiveShadow = true; } });
+      const box = new THREE.Box3().setFromObject(model); const size = box.getSize(new THREE.Vector3()); const maxD = Math.max(size.x, size.y, size.z);
+      const s = 1.8 / maxD; model.scale.setScalar(s);
+      const center = box.getCenter(new THREE.Vector3()); model.position.set(-center.x * s, -box.min.y * s + 0.03, -center.z * s);
+      scene.add(model); camera.position.set(2.8, 2.2, 3.0); camera.lookAt(0, 0.6, 0); camera.updateProjectionMatrix();
+      vizRenderRenderer.render(scene, camera);
+      requestAnimationFrame(() => { vizRenderRenderer.render(scene, camera); overlay.style.display = 'none'; resolve(); });
+    }, undefined, err => { console.warn('[viz pla]', err); overlay.style.display = 'none'; resolve(); });
+  });
+}
+
+function vizDownloadRender() { const canvas = document.getElementById('viz-render-canvas'); if (!canvas) return; const a = document.createElement('a'); a.href = canvas.toDataURL('image/png'); a.download = 'toy3dmaker-preview.png'; a.click(); }
+function vizRequestPrint() { const msg = encodeURIComponent('Hola! Acabo de usar el Visualizador 3D de Toy3DMaker y me gustaría solicitar la impresión de mi diseño.\n\n¿Podéis darme un presupuesto?'); window.open(`https://wa.me/34663486100?text=${msg}`, '_blank'); }
+</script>
+</body>
+</html>

@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Toy3DMaker — Visualizador 3D</title>
+<meta name="description" content="Sube una foto y obtén tu modelo 3D en minutos. Galería pública de modelos generados por la comunidad."/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&family=Lexend:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --teal:  #00a89d;
+  --blue:  #0055DD;
+  --orange:#FF4500;
+  --bg:    #07080d;
+  --glass: rgba(255,255,255,0.06);
+  --border:rgba(255,255,255,0.09);
+  --text:  #e8e8ec;
+  --muted: rgba(232,232,236,0.5);
+}
+
+html, body { height:100%; overflow-x:hidden; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'Lexend', sans-serif; font-size:14px;
+  cursor: none;
+}
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:
+    radial-gradient(ellipse 800px 700px at -5% -5%, rgba(0,168,157,0.06) 0%, transparent 65%),
+    radial-gradient(ellipse 600px 500px at 105% 105%, rgba(0,85,221,0.05) 0%, transparent 65%);
+}
+body::after {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  opacity:0.5;
+}
+
+#cursor      { position:fixed; width:10px; height:10px; background:var(--teal); border-radius:50%; pointer-events:none; z-index:9999; transform:translate(-50%,-50%); mix-blend-mode:screen; }
+#cursor-ring { position:fixed; width:38px; height:38px; border:1.5px solid rgba(0,168,157,0.45); border-radius:50%; pointer-events:none; z-index:9998; transform:translate(-50%,-50%); transition:width .18s,height .18s; }
+
+/* ── NAV ── */
+nav {
+  position:sticky; top:0; z-index:100;
+  height:64px; padding:0 40px;
+  display:flex; align-items:center; justify-content:space-between;
+  background:rgba(7,8,13,0.9); backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+}
+.nav-logo { font-family:'Space Grotesk',sans-serif; font-weight:900; font-size:18px; color:var(--teal); text-decoration:none; letter-spacing:-0.02em; display:flex; align-items:center; gap:10px; }
+.logo-sq { width:28px; height:28px; background:linear-gradient(135deg,var(--teal),var(--blue)); display:flex; align-items:center; justify-content:center; font-size:16px; }
+.nav-right { display:flex; align-items:center; gap:16px; }
+.nav-link { font-family:'Space Grotesk',sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); text-decoration:none; transition:color .2s; cursor:none; }
+.nav-link:hover { color:var(--teal); }
+.btn-nav { padding:8px 20px; background:var(--blue); color:white; border:none; border-radius:100px; font-family:'Space Grotesk',sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; cursor:none; transition:background .2s,transform .15s; text-decoration:none; display:inline-flex; align-items:center; }
+.btn-nav:hover { background:var(--orange); transform:scale(1.04); }
+
+/* ── LAYOUT ── */
+.page { position:relative; z-index:1; max-width:1140px; margin:0 auto; padding:0 40px 120px; }
+
+/* ── HERO ── */
+.hero { padding:80px 0 64px; text-align:center; }
+.hero-pill {
+  display:inline-flex; align-items:center; gap:8px;
+  padding:6px 16px; border-radius:100px; margin-bottom:32px;
+  background:rgba(0,168,157,0.08); border:1px solid rgba(0,168,157,0.2);
+  font-family:'Space Grotesk',sans-serif; font-size:11px; font-weight:700;
+  text-transform:uppercase; letter-spacing:.1em; color:var(--teal);
+}
+.pill-dot { width:6px; height:6px; background:var(--teal); border-radius:50%; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.4)} }
+.hero h1 {
+  font-family:'Space Grotesk',sans-serif; font-size:clamp(36px,5vw,64px);
+  font-weight:900; text-transform:uppercase; letter-spacing:-.02em; line-height:1.0;
+  margin-bottom:20px;
+}
+.hero h1 .grad {
+  background:linear-gradient(135deg,var(--teal),var(--blue),var(--orange));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text; background-size:200%;
+  animation:grad-shift 4s ease infinite;
+}
+@keyframes grad-shift { 0%,100%{background-position:0%} 50%{background-position:100%} }
+.hero-sub { font-size:16px; color:var(--muted); max-width:520px; margin:0 auto 48px; line-height:1.7; }
+.hero-stats { display:flex; justify-content:center; gap:48px; }
+.stat-num { font-family:'Space Grotesk',sans-serif; font-size:28px; font-weight:900; color:var(--text); }
+.stat-lbl { font-family:'Space Grotesk',sans-serif; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-top:4px; }
+
+/* ── DIVIDER ── */
+.sec-label { font-family:'Space Grotesk',sans-serif; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.15em; color:var(--teal); margin-bottom:12px; display:block; }
+.sec-title { font-family:'Space Grotesk',sans-serif; font-size:clamp(24px,3vw,36px); font-weight:900; text-transform:uppercase; letter-spacing:-.02em; margin-bottom:40px; }
+.sec-title .acc { color:var(--teal); }
+
+/* ── GENERATOR ── */
+#generator { padding:0 0 80px; }
+.gen-layout { display:grid; grid-template-columns:1fr 1fr; gap:40px; align-items:start; }
+
+.gen-left { display:flex; flex-direction:column; gap:16px; }
+.upload-zone {
+  border:2px dashed rgba(0,168,157,0.25); padding:48px 32px;
+  text-align:center; cursor:pointer; transition:border-color .3s,background .3s;
+  background:rgba(0,168,157,0.02); position:relative;
+}
+.upload-zone:hover,.upload-zone.drag { border-color:var(--teal); background:rgba(0,168,157,0.04); }
+.upload-zone.ready { border-style:solid; border-color:rgba(0,168,157,0.4); }
+.upload-icon { font-size:44px; margin-bottom:14px; display:block; transition:transform .3s; }
+.upload-zone:hover .upload-icon { transform:scale(1.08) rotate(-4deg); }
+.upload-img-preview { width:100%; max-height:240px; object-fit:contain; display:none; margin-bottom:12px; }
+.upload-img-preview.show { display:block; }
+.upload-title { font-family:'Space Grotesk',sans-serif; font-size:16px; font-weight:700; text-transform:uppercase; margin-bottom:6px; }
+.upload-sub   { font-size:12px; color:var(--muted); }
+.change-link  { font-size:11px; font-weight:700; font-family:'Space Grotesk',sans-serif; text-transform:uppercase; letter-spacing:.08em; color:var(--teal); background:none; border:none; cursor:pointer; display:none; margin-top:10px; text-decoration:underline; }
+.change-link.show { display:inline-block; }
+
+.btn-gen {
+  width:100%; padding:16px; text-align:center;
+  background:linear-gradient(135deg,var(--teal),var(--blue));
+  color:white; border:none; border-radius:0;
+  font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:700;
+  text-transform:uppercase; letter-spacing:.08em; cursor:pointer;
+  transition:opacity .2s,transform .15s,box-shadow .2s;
+  box-shadow:0 6px 24px rgba(0,168,157,.3);
+}
+.btn-gen:hover:not(:disabled) { opacity:.9; transform:translateY(-2px); box-shadow:0 10px 32px rgba(0,168,157,.4); }
+.btn-gen:disabled { opacity:.35; cursor:not-allowed; transform:none; }
+.gen-hint { font-size:11px; color:var(--muted); text-align:center; font-family:'Space Grotesk',sans-serif; }
+
+/* Progress */
+.progress-box { background:var(--glass); border:1px solid var(--border); padding:20px; display:none; }
+.progress-box.show { display:block; }
+.pstep { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); }
+.pstep:last-child { border-bottom:none; }
+.pstep-dot {
+  width:28px; height:28px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:12px;
+  background:rgba(255,255,255,.04); border:1px solid var(--border);
+  transition:background .3s,border-color .3s;
+}
+.pstep.active .pstep-dot { background:rgba(0,168,157,.15); border-color:var(--teal); animation:spin-dot .9s linear infinite; }
+.pstep.done   .pstep-dot { background:rgba(34,197,94,.1);  border-color:rgba(34,197,94,.3); animation:none; }
+@keyframes spin-dot { to { transform:rotate(360deg); } }
+.pstep-text { flex:1; font-family:'Space Grotesk',sans-serif; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+.pstep.active .pstep-text { color:var(--teal); }
+.pstep.done   .pstep-text { color:#4ade80; }
+.pstep-pct { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted); flex-shrink:0; }
+
+/* Error */
+.gen-error { padding:12px 16px; background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.2); font-size:13px; color:#f87171; display:none; }
+.gen-error.show { display:block; }
+
+/* Result panel */
+.gen-right { display:flex; flex-direction:column; gap:16px; }
+.result-panel { display:none; }
+.result-panel.show { display:flex; flex-direction:column; gap:16px; }
+.result-card { background:var(--glass); border:1px solid var(--border); overflow:hidden; }
+.result-card-head { padding:14px 18px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); }
+.result-card-title { font-family:'Space Grotesk',sans-serif; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--teal); }
+.result-card-tag { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; padding:3px 10px; border:1px solid rgba(0,168,157,.2); color:var(--muted); }
+.canvas-3d { width:100%; height:280px; position:relative; background:transparent; }
+.canvas-3d canvas { width:100%!important; height:100%!important; }
+.canvas-hint { position:absolute; bottom:10px; left:50%; transform:translateX(-50%); font-family:'Space Grotesk',sans-serif; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,.2); pointer-events:none; white-space:nowrap; }
+.pla-canvas { width:100%; height:280px; background:#f7f7f5; display:none; }
+.pla-canvas.show { display:block; }
+.pla-placeholder { width:100%; height:280px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:10px; background:rgba(0,0,0,.15); }
+.pla-spinner { width:36px; height:36px; border-radius:50%; border:3px solid rgba(0,168,157,.2); border-top-color:var(--teal); animation:spin-dot .8s linear infinite; }
+.result-actions { display:flex; gap:10px; padding:14px 18px; background:rgba(0,0,0,.1); border-top:1px solid var(--border); }
+.btn-action {
+  flex:1; padding:9px 14px; text-align:center; border:none; cursor:pointer;
+  font-family:'Space Grotesk',sans-serif; font-size:11px; font-weight:700;
+  text-transform:uppercase; letter-spacing:.06em; transition:all .2s;
+  text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+}
+.btn-primary-sm { background:var(--blue); color:white; }
+.btn-primary-sm:hover { background:var(--orange); }
+.btn-ghost-sm { background:rgba(255,255,255,.05); color:var(--muted); border:1px solid var(--border); }
+.btn-ghost-sm:hover { background:rgba(255,255,255,.09); color:var(--text); }
+.btn-save { background:linear-gradient(135deg,rgba(0,168,157,.3),rgba(0,85,221,.3)); color:var(--teal); border:1px solid rgba(0,168,157,.3); }
+.btn-save:hover { background:linear-gradient(135deg,rgba(0,168,157,.45),rgba(0,85,221,.45)); }
+
+/* ── GALLERY ── */
+#gallery { padding:80px 0 0; }
+.gallery-filters { display:flex; align-items:center; gap:10px; margin-bottom:32px; flex-wrap:wrap; }
+.filter-pill { padding:6px 16px; border-radius:100px; font-family:'Space Grotesk',sans-serif; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; cursor:pointer; border:1px solid var(--border); background:rgba(255,255,255,.03); color:var(--muted); transition:all .2s; }
+.filter-pill:hover,.filter-pill.active { background:rgba(0,168,157,.12); border-color:rgba(0,168,157,.3); color:var(--teal); }
+.gallery-count { margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); }
+
+.gallery-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:20px; }
+.gallery-card {
+  background:var(--glass); border:1px solid var(--border);
+  overflow:hidden; cursor:pointer;
+  transition:border-color .25s,transform .2s,box-shadow .2s;
+}
+.gallery-card:hover { border-color:rgba(0,168,157,.3); transform:translateY(-4px); box-shadow:0 16px 48px rgba(0,0,0,.4); }
+.gallery-thumb { width:100%; height:180px; object-fit:cover; display:block; background:rgba(0,0,0,.2); }
+.gallery-thumb.no-img { display:flex; align-items:center; justify-content:center; font-size:32px; color:var(--muted); }
+.gallery-info { padding:14px 16px; }
+.gallery-name { font-family:'Space Grotesk',sans-serif; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px; }
+.gallery-date { font-size:11px; color:var(--muted); font-family:'JetBrains Mono',monospace; }
+.gallery-actions { display:flex; gap:8px; padding:0 16px 14px; }
+.gallery-btn { flex:1; padding:7px 10px; text-align:center; font-family:'Space Grotesk',sans-serif; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; border:none; cursor:pointer; transition:all .2s; text-decoration:none; display:inline-block; }
+.gallery-btn-primary { background:var(--teal); color:#001a18; }
+.gallery-btn-primary:hover { background:var(--blue); color:white; }
+.gallery-btn-ghost { background:rgba(255,255,255,.04); color:var(--muted); border:1px solid var(--border); }
+.gallery-btn-ghost:hover { background:rgba(255,255,255,.08); color:var(--text); }
+
+.gallery-empty { text-align:center; padding:80px 0; }
+.gallery-empty-icon { font-size:48px; opacity:.2; margin-bottom:16px; }
+.gallery-empty-title { font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:700; text-transform:uppercase; margin-bottom:8px; }
+.gallery-empty-sub { font-size:13px; color:var(--muted); }
+
+/* ── MODAL VIEWER ── */
+.modal-overlay { position:fixed; inset:0; z-index:500; background:rgba(0,0,0,.85); backdrop-filter:blur(8px); display:none; align-items:center; justify-content:center; padding:24px; }
+.modal-overlay.open { display:flex; }
+.modal { background:#0d0e14; border:1px solid var(--border); max-width:700px; width:100%; max-height:90vh; overflow-y:auto; }
+.modal-head { padding:20px 24px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); }
+.modal-title { font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+.modal-close { background:none; border:none; color:var(--muted); cursor:pointer; font-size:20px; line-height:1; padding:4px; transition:color .2s; }
+.modal-close:hover { color:var(--text); }
+.modal-3d { width:100%; height:420px; background:#0a0b11; position:relative; }
+.modal-3d canvas { width:100%!important; height:100%!important; }
+.modal-footer { padding:16px 24px; display:flex; gap:12px; border-top:1px solid var(--border); flex-wrap:wrap; }
+
+/* ── FOOTER ── */
+.footer { border-top:1px solid var(--border); padding:40px; text-align:center; margin-top:80px; }
+.footer-text { font-family:'Space Grotesk',sans-serif; font-size:12px; color:var(--muted); }
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px) { .gen-layout { grid-template-columns:1fr; } }
+@media(max-width:600px) { nav { padding:0 20px; } .page { padding:0 20px 80px; } .hero { padding:48px 0 40px; } .hero-stats { gap:24px; } .stat-num { font-size:22px; } }
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo">
+    <div class="logo-sq">◈</div>
+    Toy3DMaker
+  </a>
+  <div class="nav-right">
+    <a href="/#objects-section" class="nav-link">Galería</a>
+    <a href="/#cotizador" class="nav-link">Cotizador</a>
+    <a href="https://wa.me/34600000000" target="_blank" class="btn-nav">WhatsApp →</a>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-pill"><span class="pill-dot"></span>Powered by Meshy AI</div>
+    <h1>De foto a<br><span class="grad">modelo 3D</span></h1>
+    <p class="hero-sub">Sube una imagen de tu idea y nuestra IA genera el modelo 3D listo para imprimir. Gratis, en minutos.</p>
+    <div class="hero-stats" id="hero-stats">
+      <div><div class="stat-num" id="stat-count">—</div><div class="stat-lbl">Modelos generados</div></div>
+      <div><div class="stat-num">~2 min</div><div class="stat-lbl">Tiempo medio</div></div>
+      <div><div class="stat-num">0.05mm</div><div class="stat-lbl">Precisión</div></div>
+    </div>
+  </div>
+
+  <!-- GENERATOR -->
+  <section id="generator">
+    <span class="sec-label">Generador</span>
+    <h2 class="sec-title">Crea tu <span class="acc">modelo 3D</span></h2>
+
+    <div class="gen-layout">
+      <!-- LEFT: upload + progress -->
+      <div class="gen-left">
+        <input type="file" id="file-input" accept="image/*" style="display:none"/>
+        <div class="upload-zone" id="upload-zone"
+          onclick="document.getElementById('file-input').click()"
+          ondragover="event.preventDefault();this.classList.add('drag')"
+          ondragleave="this.classList.remove('drag')"
+          ondrop="event.preventDefault();this.classList.remove('drag');handleFile(event.dataTransfer.files[0])">
+          <img id="preview-img" class="upload-img-preview" alt=""/>
+          <span class="upload-icon" id="upload-icon">📸</span>
+          <div class="upload-title" id="upload-title">Arrastra tu foto aquí</div>
+          <div class="upload-sub">JPG · PNG · WEBP — o haz clic</div>
+          <button class="change-link" id="change-link" onclick="event.stopPropagation();document.getElementById('file-input').click()">Cambiar imagen</button>
+        </div>
+
+        <div class="gen-error" id="gen-error"></div>
+
+        <button class="btn-gen" id="gen-btn" disabled onclick="generate()">✦ Generar modelo 3D</button>
+        <div class="gen-hint">El modelo se añadirá automáticamente a la galería pública</div>
+
+        <div class="progress-box" id="progress-box">
+          <div class="pstep" id="ps0"><div class="pstep-dot">🔍</div><div class="pstep-text">Analizando imagen</div><div class="pstep-pct" id="pp0">—</div></div>
+          <div class="pstep" id="ps1"><div class="pstep-dot">⚙️</div><div class="pstep-text">Generando geometría 3D</div><div class="pstep-pct" id="pp1">—</div></div>
+          <div class="pstep" id="ps2"><div class="pstep-dot">🎨</div><div class="pstep-text">Aplicando texturas PBR</div><div class="pstep-pct" id="pp2">—</div></div>
+          <div class="pstep" id="ps3"><div class="pstep-dot">🖨️</div><div class="pstep-text">Preparando preview impresión</div><div class="pstep-pct" id="pp3">—</div></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: result viewers -->
+      <div class="gen-right">
+        <div class="result-panel" id="result-panel">
+          <!-- 3D Viewer -->
+          <div class="result-card">
+            <div class="result-card-head">
+              <span class="result-card-title">Modelo 3D interactivo</span>
+              <span class="result-card-tag">Arrastra para rotar</span>
+            </div>
+            <div class="canvas-3d" id="canvas-3d">
+              <div class="canvas-hint">Click + arrastrar · Scroll zoom</div>
+            </div>
+            <div class="result-actions">
+              <a id="dl-glb" class="btn-action btn-ghost-sm" href="#" download>⬇ GLB</a>
+              <button class="btn-action btn-save" onclick="saveToGallery()">★ Añadir a galería</button>
+              <button class="btn-action btn-primary-sm" onclick="requestPrint()">🖨️ Pedir impresión</button>
+            </div>
+          </div>
+          <!-- PLA Preview -->
+          <div class="result-card">
+            <div class="result-card-head">
+              <span class="result-card-title">Preview impresión PLA</span>
+              <span class="result-card-tag">Simulación real</span>
+            </div>
+            <div id="pla-wrap">
+              <div class="pla-placeholder" id="pla-placeholder">
+                <div class="pla-spinner"></div>
+                <span style="font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Renderizando PLA...</span>
+              </div>
+              <canvas id="pla-canvas" class="pla-canvas"></canvas>
+            </div>
+            <div class="result-actions">
+              <button class="btn-action btn-ghost-sm" onclick="downloadPlaRender()">⬇ Guardar imagen</button>
+              <button class="btn-action btn-primary-sm" onclick="requestPrint()">💬 Presupuesto</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Placeholder cuando no hay resultado -->
+        <div id="result-placeholder" style="background:var(--glass);border:1px solid var(--border);height:200px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px">
+          <span style="font-size:36px;opacity:.2">🧩</span>
+          <span style="font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Tu modelo aparecerá aquí</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GALLERY -->
+  <section id="gallery">
+    <span class="sec-label">Comunidad</span>
+    <h2 class="sec-title">Galería de <span class="acc">modelos</span></h2>
+    <div class="gallery-filters">
+      <button class="filter-pill active" data-filter="all">Todos</button>
+      <button class="filter-pill" data-filter="recent">Recientes</button>
+      <span class="gallery-count" id="gallery-count">Cargando...</span>
+    </div>
+    <div class="gallery-grid" id="gallery-grid">
+      <div class="gallery-empty">
+        <div class="gallery-empty-icon">🧩</div>
+        <div class="gallery-empty-title">Galería vacía</div>
+        <div class="gallery-empty-sub">Sé el primero en generar un modelo</div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- MODAL VIEWER -->
+<div class="modal-overlay" id="modal" onclick="e => { if(e.target===this) closeModal() }">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title" id="modal-title">Modelo 3D</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-3d" id="modal-3d"></div>
+    <div class="modal-footer">
+      <a id="modal-dl" class="btn-action btn-ghost-sm" href="#" download style="flex:0;padding:9px 20px">⬇ Descargar GLB</a>
+      <button class="btn-action btn-primary-sm" onclick="requestPrint()" style="flex:1">🖨️ Solicitar impresión</button>
+    </div>
+  </div>
+</div>
+
+<footer class="footer">
+  <span class="footer-text">© 2026 Toy3DMaker · Powered by Meshy AI · Modelos generados por la comunidad</span>
+</footer>
+
+<script>
+// ── Cursor
+const cur = document.getElementById('cursor'), curR = document.getElementById('cursor-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove', e => { mx=e.clientX; my=e.clientY; cur.style.left=mx+'px'; cur.style.top=my+'px'; });
+(function lc(){ rx+=(mx-rx)*.12; ry+=(my-ry)*.12; curR.style.left=rx+'px'; curR.style.top=ry+'px'; requestAnimationFrame(lc); })();
+document.querySelectorAll('a,button,.gallery-card,.upload-zone').forEach(el => {
+  el.addEventListener('mouseenter',()=>{ cur.style.width='18px'; cur.style.height='18px'; curR.style.width='56px'; curR.style.height='56px'; });
+  el.addEventListener('mouseleave',()=>{ cur.style.width='10px'; cur.style.height='10px'; curR.style.width='38px'; curR.style.height='38px'; });
+});
+
+// ── State
+let imageDataUrl = null, currentGlbUrl = null, currentGlbDirect = null;
+let currentTaskId = null, currentThumbnail = null;
+let pollTimer = null;
+let interactiveRenderer = null, plaRenderer = null;
+
+// ── Image compression
+function compressImage(dataUrl, maxPx=1024, quality=0.88) {
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => {
+      const s = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width*s); c.height = Math.round(img.height*s);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      res(c.toDataURL('image/jpeg', quality));
+    };
+    img.src = dataUrl;
+  });
+}
+
+// ── File input
+document.getElementById('file-input').addEventListener('change', e => { if(e.target.files[0]) handleFile(e.target.files[0]); });
+
+async function handleFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    imageDataUrl = await compressImage(e.target.result);
+    const img = document.getElementById('preview-img');
+    img.src = imageDataUrl; img.classList.add('show');
+    document.getElementById('upload-icon').style.display = 'none';
+    document.getElementById('upload-title').style.display = 'none';
+    document.getElementById('upload-zone').classList.add('ready');
+    document.getElementById('change-link').classList.add('show');
+    document.getElementById('gen-btn').disabled = false;
+    document.getElementById('result-panel').classList.remove('show');
+    document.getElementById('result-placeholder').style.display = 'flex';
+    setError('');
+  };
+  reader.readAsDataURL(file);
+}
+
+function setError(msg) {
+  const el = document.getElementById('gen-error');
+  el.textContent = msg; el.classList.toggle('show', !!msg);
+}
+
+function setStep(idx, state, pct) {
+  const el = document.getElementById(`ps${idx}`);
+  const pp = document.getElementById(`pp${idx}`);
+  el.className = `pstep ${state}`;
+  if(pp) pp.textContent = pct != null ? pct+'%' : (state==='done'?'✓':'—');
+}
+
+// ── Generate
+async function generate() {
+  if (!imageDataUrl) return;
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true; btn.textContent = '⟳ Generando...';
+  setError('');
+  document.getElementById('progress-box').classList.add('show');
+  document.getElementById('result-panel').classList.remove('show');
+  document.getElementById('result-placeholder').style.display = 'flex';
+  [0,1,2,3].forEach(i => setStep(i,'',null));
+  setStep(0,'active',null);
+
+  try {
+    const r = await fetch('/api/generate-3d', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ image: imageDataUrl })
+    });
+    if (!r.ok) { const e=await r.json(); throw new Error(e.error||`HTTP ${r.status}`); }
+    const { taskId } = await r.json();
+    currentTaskId = taskId;
+    setStep(0,'done',100); setStep(1,'active',5);
+
+    pollTimer = setInterval(async () => {
+      try {
+        const pr = await fetch(`/api/poll-3d?taskId=${taskId}`);
+        const data = await pr.json();
+        if (data.status==='IN_PROGRESS'||data.status==='PENDING') {
+          const p = data.progress||0;
+          if (p<60) { setStep(1,'active',Math.min(Math.round(p*1.5),95)); }
+          else { setStep(1,'done',100); setStep(2,'active',Math.min(Math.round((p-60)*2.5),95)); }
+          return;
+        }
+        if (data.status==='FAILED') { clearInterval(pollTimer); throw new Error(data.error||'Generación fallida'); }
+        if (data.status==='SUCCEEDED') {
+          clearInterval(pollTimer); pollTimer=null;
+          setStep(1,'done',100); setStep(2,'done',100); setStep(3,'active',20);
+          currentGlbUrl    = data.glbUrl;
+          currentGlbDirect = data.glbDirect;
+          currentThumbnail = data.thumbnail;
+          document.getElementById('dl-glb').href = currentGlbDirect || currentGlbUrl;
+          document.getElementById('result-panel').classList.add('show');
+          document.getElementById('result-placeholder').style.display = 'none';
+          await new Promise(r => requestAnimationFrame(()=>requestAnimationFrame(r)));
+          await buildInteractiveViewer(currentGlbUrl);
+          await buildPlaPreview(currentGlbUrl);
+          setStep(3,'done',100);
+          btn.disabled=false; btn.textContent='✦ Generar otro';
+          // Guardar en galería automáticamente
+          autoSaveToGallery(taskId, data);
+        }
+      } catch(e) {
+        clearInterval(pollTimer);
+        setError(String(e));
+        btn.disabled=false; btn.textContent='✦ Generar modelo 3D';
+      }
+    }, 4000);
+
+    setTimeout(()=>{ if(pollTimer){clearInterval(pollTimer); setError('Timeout — inténtalo con otra imagen'); btn.disabled=false; btn.textContent='✦ Generar modelo 3D'; }}, 8*60*1000);
+
+  } catch(e) {
+    setError(String(e));
+    btn.disabled=false; btn.textContent='✦ Generar modelo 3D';
+    [0,1,2,3].forEach(i=>setStep(i,'',null));
+  }
+}
+
+// ── Three.js Interactive Viewer
+function buildInteractiveViewer(glbUrl) {
+  return new Promise(resolve => {
+    const container = document.getElementById('canvas-3d');
+    if (interactiveRenderer) { interactiveRenderer.dispose(); container.querySelectorAll('canvas').forEach(c=>c.remove()); }
+    // Forzar dimensiones — container puede ser 0px si el layout no terminó
+    container.style.width = '100%';
+    container.style.height = '280px';
+    const w = Math.max(container.offsetWidth, container.parentElement?.offsetWidth || 460, 300);
+    const h = 280;
+    interactiveRenderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+    interactiveRenderer.setSize(w,h); interactiveRenderer.setPixelRatio(Math.min(devicePixelRatio,2));
+    interactiveRenderer.setClearColor(0,0);
+    container.insertBefore(interactiveRenderer.domElement, container.querySelector('.canvas-hint'));
+    const sc=new THREE.Scene(), cam=new THREE.PerspectiveCamera(45,w/h,.01,1000);
+    sc.add(new THREE.AmbientLight(0xffffff,.7));
+    const kl=new THREE.DirectionalLight(0xfff5e0,2.5); kl.position.set(3,4,3); sc.add(kl);
+    const fl=new THREE.DirectionalLight(0xd0e8ff,1.2); fl.position.set(-3,1,2); sc.add(fl);
+    const rl=new THREE.DirectionalLight(0x4bdad7,.8); rl.position.set(0,-2,-3); sc.add(rl);
+    console.log('[viewer] Loading:', glbUrl.slice(0,80));
+    new THREE.GLTFLoader().load(glbUrl, gltf => {
+      console.log('[viewer] OK');
+      const m=gltf.scene;
+      const box=new THREE.Box3().setFromObject(m);
+      const dims=box.getSize(new THREE.Vector3());
+      const s=2/Math.max(dims.x,dims.y,dims.z,0.001);
+      m.scale.setScalar(s);
+      m.position.sub(box.getCenter(new THREE.Vector3()).multiplyScalar(s));
+      sc.add(m);
+      cam.position.set(0,.3,3.2); cam.lookAt(0,0,0);
+      let drag=false,lx=0,ly=0,ry=0,rx=0,ty=0,tx=0,zoom=3.2;
+      interactiveRenderer.domElement.addEventListener('mousedown',e=>{drag=true;lx=e.clientX;ly=e.clientY;});
+      window.addEventListener('mouseup',()=>drag=false);
+      interactiveRenderer.domElement.addEventListener('mousemove',e=>{if(!drag)return;ty+=(e.clientX-lx)*.008;tx+=(e.clientY-ly)*.005;tx=Math.max(-.6,Math.min(.6,tx));lx=e.clientX;ly=e.clientY;});
+      interactiveRenderer.domElement.addEventListener('wheel',e=>{zoom+=e.deltaY*.005;zoom=Math.max(1.5,Math.min(6,zoom));},{passive:true});
+      let ts=null;
+      interactiveRenderer.domElement.addEventListener('touchstart',e=>{if(e.touches.length===1)ts={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:true});
+      interactiveRenderer.domElement.addEventListener('touchmove',e=>{if(!ts||e.touches.length!==1)return;ty+=(e.touches[0].clientX-ts.x)*.008;tx+=(e.touches[0].clientY-ts.y)*.005;ts={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:true});
+      (function loop(){
+        requestAnimationFrame(loop);
+        if(!drag)ty+=.004;
+        ry+=(ty-ry)*.08; rx+=(tx-rx)*.08;
+        m.rotation.y=ry; m.rotation.x=rx;
+        cam.position.z+=(zoom-cam.position.z)*.08;
+        interactiveRenderer.render(sc,cam);
+      })();
+      resolve();
+    }, undefined, e=>{
+      console.error('[viewer] ERROR loading GLB:', e);
+      container.insertAdjacentHTML('beforeend','<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(239,68,68,.08);color:#f87171;font-family:Space Grotesk,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em">Error cargando modelo — ver consola</div>');
+      resolve();
+    });
+  });
+}
+
+// ── Three.js PLA Preview
+function buildPlaPreview(glbUrl) {
+  return new Promise(resolve => {
+    const canvas=document.getElementById('pla-canvas');
+    const placeholder=document.getElementById('pla-placeholder');
+    if(plaRenderer){plaRenderer.dispose();}
+    const w=canvas.parentElement.clientWidth||460, h=280;
+    plaRenderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,preserveDrawingBuffer:true});
+    plaRenderer.setSize(w,h); plaRenderer.setPixelRatio(Math.min(devicePixelRatio,2));
+    plaRenderer.setClearColor(0xf4f4f2,1);
+    plaRenderer.shadowMap.enabled=true; plaRenderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    canvas.classList.add('show'); placeholder.style.display='none';
+    const sc=new THREE.Scene(); sc.background=new THREE.Color(0xf4f4f2);
+    const cam=new THREE.PerspectiveCamera(40,w/h,.01,1000);
+    sc.add(new THREE.AmbientLight(0xfff8f0,.45));
+    const kl=new THREE.DirectionalLight(0xfffaf0,3.5); kl.position.set(4,6,4); kl.castShadow=true; kl.shadow.mapSize.set(2048,2048); sc.add(kl);
+    const fl=new THREE.DirectionalLight(0xe8f0ff,1.5); fl.position.set(-4,2,3); sc.add(fl);
+    const tl=new THREE.DirectionalLight(0xffffff,1); tl.position.set(0,8,0); sc.add(tl);
+    const bl=new THREE.DirectionalLight(0xffe4c4,.8); bl.position.set(0,2,-5); sc.add(bl);
+    const plaMat=new THREE.MeshStandardMaterial({color:0xf5f5f3,roughness:.78,metalness:0});
+    const platform=new THREE.Mesh(new THREE.CylinderGeometry(1.6,1.6,.06,64),new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:.6,metalness:.3}));
+    platform.receiveShadow=true; platform.position.y=-.03; sc.add(platform);
+    const grid=new THREE.GridHelper(3.2,12,0x333333,0x222222);
+    grid.position.y=.001; grid.material.opacity=.35; grid.material.transparent=true; sc.add(grid);
+    new THREE.GLTFLoader().load(glbUrl, gltf => {
+      const m=gltf.scene.clone(true);
+      m.traverse(c=>{if(c.isMesh){c.material=plaMat;c.castShadow=true;c.receiveShadow=true;}});
+      const box=new THREE.Box3().setFromObject(m);
+      const size=box.getSize(new THREE.Vector3());
+      const s=1.8/Math.max(size.x,size.y,size.z);
+      m.scale.setScalar(s);
+      const ctr=box.getCenter(new THREE.Vector3());
+      m.position.set(-ctr.x*s,-box.min.y*s+.03,-ctr.z*s);
+      sc.add(m);
+      cam.position.set(2.8,2.2,3); cam.lookAt(0,.6,0); cam.updateProjectionMatrix();
+      plaRenderer.render(sc,cam);
+      requestAnimationFrame(()=>{ plaRenderer.render(sc,cam); resolve(); });
+    },undefined,e=>{console.warn('[pla]',e);resolve();});
+  });
+}
+
+function downloadPlaRender() {
+  const c=document.getElementById('pla-canvas');
+  if(!c) return;
+  const a=document.createElement('a'); a.href=c.toDataURL('image/png'); a.download='toy3d-print-preview.png'; a.click();
+}
+
+function requestPrint() {
+  const msg=encodeURIComponent('Hola! Acabo de generar un modelo 3D en el Visualizador de Toy3DMaker y me gustaría solicitar la impresión. ¿Podéis darme presupuesto?');
+  window.open(`https://wa.me/34600000000?text=${msg}`,'_blank');
+}
+
+// ── Gallery: auto-save + manual save
+async function autoSaveToGallery(taskId, data) {
+  try {
+    await fetch('/api/gallery-save', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        taskId, thumbnail: data.thumbnail, glbDirect: data.glbDirect,
+        glbProxy: data.glbUrl, objUrl: data.objUrl,
+        name: `Modelo ${new Date().toLocaleDateString('es-ES')}`,
+      })
+    });
+    loadGallery(); // Refrescar galería
+  } catch(e) { console.warn('[auto-save]', e); }
+}
+
+async function saveToGallery() {
+  if (!currentTaskId) return;
+  const btn = document.querySelector('.btn-save');
+  btn.textContent = '★ Guardando...'; btn.disabled = true;
+  try {
+    await fetch('/api/gallery-save', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        taskId: currentTaskId, thumbnail: currentThumbnail,
+        glbDirect: currentGlbDirect, glbProxy: currentGlbUrl,
+      })
+    });
+    btn.textContent = '✓ Añadido a galería';
+    loadGallery();
+  } catch(e) {
+    btn.textContent = '★ Añadir a galería'; btn.disabled = false;
+  }
+}
+
+// ── Gallery load
+async function loadGallery() {
+  try {
+    const r = await fetch('/api/gallery-load?limit=24');
+    const items = await r.json();
+    const grid = document.getElementById('gallery-grid');
+    const count = document.getElementById('gallery-count');
+    const statCount = document.getElementById('stat-count');
+
+    count.textContent = `${items.length} modelos`;
+    statCount.textContent = `+${items.length}`;
+
+    if (!items.length) {
+      grid.innerHTML = `<div class="gallery-empty"><div class="gallery-empty-icon">🧩</div><div class="gallery-empty-title">Galería vacía</div><div class="gallery-empty-sub">Sé el primero en generar un modelo</div></div>`;
+      return;
+    }
+
+    grid.innerHTML = items.map(item => `
+      <div class="gallery-card" onclick="openModal('${item.taskId}','${encodeURIComponent(item.name||'')}','${item.glbProxy||item.glbDirect}','${item.glbDirect||''}','${item.thumbnail||''}')">
+        ${item.thumbnail
+          ? `<img class="gallery-thumb" src="${item.thumbnail}" alt="${item.name||'Modelo'}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+          : ''}
+        <div class="gallery-thumb no-img" style="${item.thumbnail?'display:none':''}">🧩</div>
+        <div class="gallery-info">
+          <div class="gallery-name">${item.name || 'Modelo 3D'}</div>
+          <div class="gallery-date">${new Date(item.createdAt).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'})}</div>
+        </div>
+        <div class="gallery-actions">
+          <button class="gallery-btn gallery-btn-primary" onclick="event.stopPropagation();openModal('${item.taskId}','${encodeURIComponent(item.name||'')}','${item.glbProxy||item.glbDirect}','${item.glbDirect||''}','${item.thumbnail||''}')">Ver 3D</button>
+          <a class="gallery-btn gallery-btn-ghost" href="${item.glbDirect||item.glbProxy||'#'}" download onclick="event.stopPropagation()">⬇ GLB</a>
+        </div>
+      </div>
+    `).join('');
+
+  } catch(e) { console.warn('[gallery]', e); }
+}
+
+// ── Modal 3D viewer
+let modalRenderer = null;
+
+function openModal(taskId, name, glbProxy, glbDirect, thumbnail) {
+  document.getElementById('modal-title').textContent = decodeURIComponent(name) || 'Modelo 3D';
+  document.getElementById('modal-dl').href = glbDirect || glbProxy || '#';
+  document.getElementById('modal').classList.add('open');
+  buildModalViewer(glbProxy || glbDirect);
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  if (modalRenderer) { modalRenderer.dispose(); document.getElementById('modal-3d').querySelectorAll('canvas').forEach(c=>c.remove()); modalRenderer=null; }
+}
+
+document.getElementById('modal').addEventListener('click', e => { if(e.target===document.getElementById('modal')) closeModal(); });
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
+
+function buildModalViewer(glbUrl) {
+  if (!glbUrl) return;
+  const container = document.getElementById('modal-3d');
+  container.querySelectorAll('canvas').forEach(c=>c.remove());
+  if (modalRenderer) { modalRenderer.dispose(); modalRenderer=null; }
+  requestAnimationFrame(() => {
+    const w=container.clientWidth||700, h=420;
+    modalRenderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+    modalRenderer.setSize(w,h); modalRenderer.setPixelRatio(Math.min(devicePixelRatio,2)); modalRenderer.setClearColor(0x0a0b11,1);
+    container.appendChild(modalRenderer.domElement);
+    const sc=new THREE.Scene(); sc.background=new THREE.Color(0x0a0b11);
+    const cam=new THREE.PerspectiveCamera(45,w/h,.01,1000);
+    sc.add(new THREE.AmbientLight(0xffffff,.6));
+    const kl=new THREE.DirectionalLight(0xfff5e0,2.5); kl.position.set(3,4,3); sc.add(kl);
+    const fl=new THREE.DirectionalLight(0xd0e8ff,1.2); fl.position.set(-3,1,2); sc.add(fl);
+    const rl=new THREE.DirectionalLight(0x4bdad7,.8); rl.position.set(0,-2,-3); sc.add(rl);
+    new THREE.GLTFLoader().load(glbUrl, gltf => {
+      const m=gltf.scene;
+      const box=new THREE.Box3().setFromObject(m);
+      const s=2/Math.max(...box.getSize(new THREE.Vector3()).toArray());
+      m.scale.setScalar(s); m.position.sub(box.getCenter(new THREE.Vector3()).multiplyScalar(s));
+      sc.add(m); cam.position.set(0,.3,3.2); cam.lookAt(0,0,0);
+      let drag=false,lx=0,ty=0,tx=0,ry=0,rx=0,zoom=3.2;
+      modalRenderer.domElement.addEventListener('mousedown',e=>{drag=true;lx=e.clientX;});
+      window.addEventListener('mouseup',()=>drag=false);
+      modalRenderer.domElement.addEventListener('mousemove',e=>{if(!drag)return;ty+=(e.clientX-lx)*.009;lx=e.clientX;});
+      modalRenderer.domElement.addEventListener('wheel',e=>{zoom+=e.deltaY*.005;zoom=Math.max(1.5,Math.min(6,zoom));},{passive:true});
+      (function loop(){
+        if(!modalRenderer)return;
+        requestAnimationFrame(loop);
+        ty+=.005; ry+=(ty-ry)*.08; rx+=(tx-rx)*.08;
+        m.rotation.y=ry; m.rotation.x=rx;
+        cam.position.z+=(zoom-cam.position.z)*.08;
+        modalRenderer.render(sc,cam);
+      })();
+    });
+  });
+}
+
+// ── Init
+loadGallery();
+</script>
+</body>
+</html>

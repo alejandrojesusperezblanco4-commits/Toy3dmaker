@@ -1,0 +1,20 @@
+﻿node_modules/
+.env
+.env.local
+.vercel/
+.claude/
+*_checkpoint*.html
+blender_scripts/
+package-lock.json
+vercel.json
+api/
+CLAUDE.md
+3d.html
+# Vídeos originales pesados (solo subimos los _web optimizados)
+assets/andys_room.mp4
+assets/andys_room_exit.mp4
+assets/andys_room_exit_trim.mp4
+assets/toys_coming.mp4
+assets/toys_present_reverse.mp4
+assets/andys_room.webp
+
