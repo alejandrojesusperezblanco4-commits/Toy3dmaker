@@ -23,6 +23,19 @@ app.use(express.static(path.join(__dirname)));
 // ── Pedidos + Stripe ────────────────────────────────────────────────
 app.use(ordersRouter);
 
+// ── /api/setup-status  GET ──────────────────────────────────────────
+app.get("/api/setup-status", (req, res) => {
+  const secret = process.env.ADMIN_SECRET;
+  if (secret && req.headers["x-admin-secret"] !== secret)
+    return res.status(401).json({ error: "No autorizado" });
+  res.json({
+    stripe:  !!(process.env.STRIPE_SECRET_KEY),
+    webhook: !!(process.env.STRIPE_WEBHOOK_SECRET),
+    volume:  !!(process.env.RAILWAY_VOLUME_MOUNT_PATH),
+    meshy:   !!(process.env.MESHY_API_KEY),
+  });
+});
+
 // ── /api/generate-3d  POST ──────────────────────────────────────────
 app.post("/api/generate-3d", async (req, res) => {
   const apiKey = (process.env.MESHY_API_KEY || "").trim();

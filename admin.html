@@ -96,6 +96,17 @@ tr:hover td{background:rgba(255,255,255,.02)}
   </div>
 
   <div class="main">
+    <!-- Setup banner (se oculta si todo está configurado) -->
+    <div id="setup-banner" style="display:none;background:rgba(234,179,8,.06);border:1px solid rgba(234,179,8,.2);border-left:3px solid var(--yellow);padding:18px 24px;margin-bottom:24px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+          <div style="font-weight:700;font-size:13px;color:var(--yellow);margin-bottom:6px">⚙ Configuración pendiente</div>
+          <div id="setup-items" style="font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px"></div>
+        </div>
+        <button class="btn btn-sm" onclick="document.getElementById('setup-banner').style.display='none'">Cerrar</button>
+      </div>
+    </div>
+
     <!-- Stats -->
     <div class="stats">
       <div class="stat-card"><div class="stat-num" id="s-total">—</div><div class="stat-label">Total pedidos</div></div>
@@ -156,6 +167,7 @@ function doLogin() {
       document.getElementById("login-screen").style.display = "none";
       document.getElementById("app-screen").style.display  = "block";
       loadOrders();
+      checkSetup();
       setInterval(loadOrders, 30000);
     });
 }
@@ -166,6 +178,7 @@ if (!window.location.hostname.includes("railway.app")) {
   document.getElementById("login-screen").style.display = "none";
   document.getElementById("app-screen").style.display   = "block";
   loadOrders();
+  checkSetup();
   setInterval(loadOrders, 30000);
 }
 
@@ -307,6 +320,28 @@ function esc(s) {
 }
 
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+
+async function checkSetup() {
+  try {
+    const r = await fetch("/api/setup-status", { headers: { "x-admin-secret": _secret } });
+    if (!r.ok) return;
+    const s = await r.json();
+    const items = [];
+    if (!s.stripe) items.push(
+      '⚠ <b>Pagos Stripe no configurados.</b> Para activar cobros: ' +
+      '<a href="https://stripe.com" target="_blank" style="color:var(--yellow)">crea tu cuenta en stripe.com</a>, ' +
+      'obtén tu clave secreta (<code>sk_live_...</code>) y añádela en Railway → Variables → <code>STRIPE_SECRET_KEY</code>. ' +
+      'Luego crea un webhook apuntando a <code>/api/stripe/webhook</code> y añade <code>STRIPE_WEBHOOK_SECRET</code>.'
+    );
+    if (!s.volume) items.push(
+      '⚠ <b>Base de datos sin persistencia.</b> Crea un Volume en Railway montado en <code>/data</code>.'
+    );
+    if (items.length) {
+      document.getElementById("setup-items").innerHTML = items.map(i => `<div>${i}</div>`).join("");
+      document.getElementById("setup-banner").style.display = "block";
+    }
+  } catch(e) {}
+}
 </script>
 </body>
 </html>
