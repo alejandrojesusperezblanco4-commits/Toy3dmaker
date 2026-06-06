@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Toy3dMaker — Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#07080d;--surface:#0d0e14;--border:rgba(255,255,255,.08);--text:#e5e2e1;--muted:rgba(229,226,225,.5);--teal:#00a89d;--green:#22c55e;--yellow:#eab308;--orange:#f97316;--red:#ef4444;--blue:#3b82f6}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:14px}
+a{color:inherit;text-decoration:none}
+/* ── Layout ── */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 32px;height:56px;display:flex;align-items:center;justify-content:space-between}
+.topbar-logo{font-weight:700;font-size:16px;letter-spacing:.04em;display:flex;align-items:center;gap:10px}
+.logo-dot{width:8px;height:8px;background:var(--teal);box-shadow:0 0 8px var(--teal)}
+.topbar-right{display:flex;align-items:center;gap:16px;font-size:12px;color:var(--muted)}
+.main{padding:32px}
+/* ── Stats ── */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:var(--border);margin-bottom:32px}
+.stat-card{background:var(--surface);padding:20px 24px}
+.stat-num{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:var(--teal)}
+.stat-label{font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.06em}
+/* ── Table ── */
+.table-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.table-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.filter-row{display:flex;gap:8px}
+.filter-btn{background:transparent;border:1px solid var(--border);color:var(--muted);padding:5px 12px;font-size:11px;font-weight:700;font-family:'Space Grotesk',sans-serif;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;transition:all .15s}
+.filter-btn.active{border-color:var(--teal);color:var(--teal)}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:10px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);border-bottom:1px solid var(--border)}
+td{padding:12px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+tr:hover td{background:rgba(255,255,255,.02)}
+/* ── Status badges ── */
+.badge{display:inline-block;padding:3px 8px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-family:'JetBrains Mono',monospace}
+.badge-pendiente_pago{color:var(--muted);background:rgba(255,255,255,.06)}
+.badge-pagado{color:var(--blue);background:rgba(59,130,246,.1)}
+.badge-en_cola{color:var(--yellow);background:rgba(234,179,8,.1)}
+.badge-imprimiendo{color:var(--orange);background:rgba(249,115,22,.1)}
+.badge-listo{color:var(--green);background:rgba(34,197,94,.1)}
+.badge-entregado{color:var(--teal);background:rgba(0,168,157,.1)}
+.badge-cancelado{color:var(--red);background:rgba(239,68,68,.1)}
+/* ── Actions ── */
+.btn{background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text);padding:5px 12px;font-size:11px;font-weight:600;font-family:'Space Grotesk',sans-serif;cursor:pointer;transition:all .15s}
+.btn:hover{border-color:var(--teal);color:var(--teal)}
+.btn-sm{padding:3px 8px;font-size:10px}
+.status-select{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px 8px;font-size:11px;font-family:'Space Grotesk',sans-serif;cursor:pointer}
+/* ── Modal ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(8px);z-index:100;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-top:2px solid var(--teal);max-width:540px;width:100%;padding:32px;position:relative}
+.modal-close{position:absolute;top:12px;right:12px;background:transparent;border:1px solid var(--border);color:var(--muted);width:26px;height:26px;cursor:pointer;font-size:12px}
+.modal h3{font-size:16px;margin-bottom:20px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px}
+.field input,.field textarea,.field select{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text);padding:9px 12px;font-family:'Space Grotesk',sans-serif;font-size:13px;outline:none}
+.field input:focus,.field textarea:focus{border-color:var(--teal)}
+.field textarea{resize:vertical;min-height:80px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+/* ── Empty ── */
+.empty{text-align:center;padding:64px 0;color:var(--muted)}
+.empty-icon{font-size:40px;margin-bottom:12px}
+/* ── Login ── */
+#login-screen{display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:20px}
+#login-screen h2{font-size:20px}
+#login-screen input{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text);padding:10px 16px;font-size:14px;font-family:'Space Grotesk',sans-serif;width:280px;outline:none}
+#login-screen button{background:var(--teal);color:#07080d;border:none;padding:10px 32px;font-size:13px;font-weight:700;font-family:'Space Grotesk',sans-serif;cursor:pointer;width:280px}
+#app-screen{display:none}
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="login-screen">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+    <div class="logo-dot"></div>
+    <span style="font-weight:700;font-size:18px;letter-spacing:.04em">Toy3dMaker</span>
+  </div>
+  <h2 style="color:var(--muted);font-weight:400;font-size:14px">Panel de gestión</h2>
+  <input id="secret-input" type="password" placeholder="Contraseña del panel" onkeydown="if(event.key==='Enter')doLogin()"/>
+  <button onclick="doLogin()">Entrar →</button>
+  <div id="login-err" style="color:var(--red);font-size:12px;display:none">Contraseña incorrecta</div>
+</div>
+
+<!-- App -->
+<div id="app-screen">
+  <div class="topbar">
+    <div class="topbar-logo">
+      <div class="logo-dot"></div>
+      Toy3dMaker — Panel de pedidos
+    </div>
+    <div class="topbar-right">
+      <span id="last-updated">—</span>
+      <button class="btn btn-sm" onclick="loadOrders()">↻ Actualizar</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat-card"><div class="stat-num" id="s-total">—</div><div class="stat-label">Total pedidos</div></div>
+      <div class="stat-card"><div class="stat-num" id="s-pagados" style="color:var(--blue)">—</div><div class="stat-label">Pagados</div></div>
+      <div class="stat-card"><div class="stat-num" id="s-imprimiendo" style="color:var(--orange)">—</div><div class="stat-label">Imprimiendo</div></div>
+      <div class="stat-card"><div class="stat-num" id="s-listos" style="color:var(--green)">—</div><div class="stat-label">Listos</div></div>
+      <div class="stat-card"><div class="stat-num" id="s-facturado" style="color:var(--teal)">—</div><div class="stat-label">Facturado</div></div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-header">
+      <div class="table-title">Pedidos</div>
+      <div class="filter-row">
+        <button class="filter-btn active" data-filter="all" onclick="setFilter('all',this)">Todos</button>
+        <button class="filter-btn" data-filter="pagado" onclick="setFilter('pagado',this)">Pagados</button>
+        <button class="filter-btn" data-filter="imprimiendo" onclick="setFilter('imprimiendo',this)">Imprimiendo</button>
+        <button class="filter-btn" data-filter="listo" onclick="setFilter('listo',this)">Listos</button>
+      </div>
+    </div>
+
+    <div id="table-wrap">
+      <div class="empty"><div class="empty-icon">📦</div>Cargando pedidos...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal detalle -->
+<div class="modal-overlay" id="detail-modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h3 id="modal-title">Pedido</h3>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+let _secret = "";
+let _orders = [];
+let _filter = "all";
+
+const STATUSES = [
+  "pendiente_pago","pagado","en_cola","imprimiendo","listo","entregado","cancelado"
+];
+const STATUS_LABEL = {
+  pendiente_pago:"Pendiente pago", pagado:"Pagado", en_cola:"En cola",
+  imprimiendo:"Imprimiendo", listo:"Listo", entregado:"Entregado", cancelado:"Cancelado"
+};
+
+function doLogin() {
+  const val = document.getElementById("secret-input").value.trim();
+  _secret = val;
+  fetch("/api/orders?limit=1", { headers: { "x-admin-secret": _secret } })
+    .then(r => {
+      if (r.status === 401) {
+        document.getElementById("login-err").style.display = "block";
+        return;
+      }
+      document.getElementById("login-screen").style.display = "none";
+      document.getElementById("app-screen").style.display  = "block";
+      loadOrders();
+      setInterval(loadOrders, 30000);
+    });
+}
+
+// Allow no-password in dev (empty secret)
+if (!window.location.hostname.includes("railway.app")) {
+  _secret = "";
+  document.getElementById("login-screen").style.display = "none";
+  document.getElementById("app-screen").style.display   = "block";
+  loadOrders();
+  setInterval(loadOrders, 30000);
+}
+
+async function loadOrders() {
+  try {
+    const [oRes, sRes] = await Promise.all([
+      fetch("/api/orders",       { headers: { "x-admin-secret": _secret } }),
+      fetch("/api/orders/stats", { headers: { "x-admin-secret": _secret } }),
+    ]);
+    _orders = await oRes.json();
+    const stats = await sRes.json();
+    document.getElementById("s-total").textContent       = stats.total ?? 0;
+    document.getElementById("s-pagados").textContent     = stats.pagados ?? 0;
+    document.getElementById("s-imprimiendo").textContent = stats.imprimiendo ?? 0;
+    document.getElementById("s-listos").textContent      = stats.listos ?? 0;
+    document.getElementById("s-facturado").textContent   = stats.facturado ? `${Number(stats.facturado).toFixed(0)}€` : "0€";
+    document.getElementById("last-updated").textContent  = "Actualizado: " + new Date().toLocaleTimeString("es-ES");
+    renderTable();
+  } catch(e) { console.error(e); }
+}
+
+function setFilter(f, btn) {
+  _filter = f;
+  document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  renderTable();
+}
+
+function renderTable() {
+  const rows = _filter === "all" ? _orders : _orders.filter(o => o.status === _filter);
+  if (!rows.length) {
+    document.getElementById("table-wrap").innerHTML =
+      `<div class="empty"><div class="empty-icon">📭</div>Sin pedidos${_filter !== "all" ? " con este estado" : ""}</div>`;
+    return;
+  }
+  document.getElementById("table-wrap").innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Fecha</th><th>Cliente</th><th>Material</th><th>Uds</th>
+          <th>Precio</th><th>Estado</th><th>Archivo</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(o => `
+          <tr>
+            <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">${fmtDate(o.created_at)}</td>
+            <td>
+              <div style="font-weight:600">${esc(o.name)}</div>
+              <div style="font-size:11px;color:var(--muted)">${esc(o.email)}</div>
+            </td>
+            <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px">${esc(o.material)} · ${esc(o.quality)}</span></td>
+            <td style="text-align:center">${o.quantity}</td>
+            <td style="font-family:'JetBrains Mono',monospace;font-size:12px">${o.price_final ? o.price_final+"€" : o.price_estimate ? "~"+o.price_estimate+"€" : "—"}</td>
+            <td>
+              <select class="status-select" onchange="updateStatus('${o.id}',this.value)">
+                ${STATUSES.map(s => `<option value="${s}"${s===o.status?" selected":""}>${STATUS_LABEL[s]}</option>`).join("")}
+              </select>
+            </td>
+            <td>${o.stl_filename ? `<a href="/api/orders/${o.id}/file?secret=${_secret}" class="btn btn-sm" download>⬇ STL</a>` : "<span style='color:var(--muted);font-size:11px'>—</span>"}</td>
+            <td><button class="btn btn-sm" onclick="openDetail('${o.id}')">Ver</button></td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+async function updateStatus(id, status) {
+  await fetch(`/api/orders/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-admin-secret": _secret },
+    body: JSON.stringify({ status }),
+  });
+  const o = _orders.find(x => x.id === id);
+  if (o) o.status = status;
+}
+
+function openDetail(id) {
+  const o = _orders.find(x => x.id === id);
+  if (!o) return;
+  document.getElementById("modal-title").textContent = `Pedido · ${o.name}`;
+  document.getElementById("modal-body").innerHTML = `
+    <div class="row">
+      <div class="field"><label>Email</label><div>${esc(o.email)}</div></div>
+      <div class="field"><label>Teléfono</label><div>${o.phone ?? "—"}</div></div>
+    </div>
+    <div class="field"><label>Descripción</label><div>${esc(o.description ?? "—")}</div></div>
+    <div class="row">
+      <div class="field"><label>Material</label><div>${esc(o.material)} · ${esc(o.quality)}</div></div>
+      <div class="field"><label>Tamaño</label><div>${o.size_cm ?? "—"}</div></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Precio estimado</label><div>${o.price_estimate ? o.price_estimate+"€" : "—"}</div></div>
+      <div class="field"><label>Precio final</label>
+        <input type="number" step="0.01" value="${o.price_final ?? o.price_estimate ?? ""}"
+          onchange="updateField('${o.id}','price_final',this.value)" placeholder="0.00"
+          style="background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text);padding:7px 10px;font-size:13px;width:100%;outline:none"/>
+      </div>
+    </div>
+    <div class="field"><label>Impresora</label>
+      <select class="status-select" style="width:100%" onchange="updateField('${o.id}','printer',this.value)">
+        <option value="">Sin asignar</option>
+        <option value="bambu"${o.printer==="bambu"?" selected":""}>Bambu Lab P1S</option>
+        <option value="kobra"${o.printer==="kobra"?" selected":""}>Anycubic Kobra X</option>
+      </select>
+    </div>
+    <div class="field"><label>Notas del taller</label>
+      <textarea onchange="updateField('${o.id}','notes',this.value)" placeholder="Notas internas...">${o.notes ?? ""}</textarea>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:12px;font-family:'JetBrains Mono',monospace">
+      ID: ${o.id}<br>Creado: ${o.created_at}
+    </div>
+  `;
+  document.getElementById("detail-modal").classList.add("open");
+}
+
+async function updateField(id, field, value) {
+  await fetch(`/api/orders/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-admin-secret": _secret },
+    body: JSON.stringify({ [field]: value }),
+  });
+  const o = _orders.find(x => x.id === id);
+  if (o) o[field] = value;
+}
+
+function closeModal() {
+  document.getElementById("detail-modal").classList.remove("open");
+}
+
+function fmtDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit"}) + " " +
+         d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"});
+}
+function esc(s) {
+  return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+</script>
+</body>
+</html>
