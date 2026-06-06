@@ -165,6 +165,21 @@ router.post("/api/stripe/webhook",
   }
 );
 
+// ── GET /api/orders/stats ────────────────────────────────────────────
+// IMPORTANTE: debe ir ANTES de /:id para que "stats" no sea capturado como ID
+router.get("/api/orders/stats", adminAuth, (_req, res) => {
+  const stats = db.prepare(`
+    SELECT
+      COUNT(*)                                           AS total,
+      SUM(CASE WHEN status = 'pagado'      THEN 1 END)  AS pagados,
+      SUM(CASE WHEN status = 'imprimiendo' THEN 1 END)  AS imprimiendo,
+      SUM(CASE WHEN status = 'listo'       THEN 1 END)  AS listos,
+      SUM(price_final)                                  AS facturado
+    FROM orders
+  `).get();
+  res.json(stats);
+});
+
 // ── GET /api/orders ──────────────────────────────────────────────────
 router.get("/api/orders", adminAuth, (_req, res) => {
   const orders = db.prepare(`
@@ -210,18 +225,7 @@ router.get("/api/orders/:id/file", adminAuth, (req, res) => {
   res.download(filePath, order.stl_filename ?? "modelo.stl");
 });
 
-// ── GET /api/orders/stats ────────────────────────────────────────────
-router.get("/api/orders/stats", adminAuth, (_req, res) => {
-  const stats = db.prepare(`
-    SELECT
-      COUNT(*)                                          AS total,
-      SUM(CASE WHEN status = 'pagado'     THEN 1 END)  AS pagados,
-      SUM(CASE WHEN status = 'imprimiendo' THEN 1 END) AS imprimiendo,
-      SUM(CASE WHEN status = 'listo'      THEN 1 END)  AS listos,
-      SUM(price_final)                                 AS facturado
-    FROM orders
-  `).get();
-  res.json(stats);
+// ── (stats moved above /:id — see top of GET routes) ─────────────────
 });
 
 export default router;
