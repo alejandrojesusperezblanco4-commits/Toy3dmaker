@@ -226,6 +226,5 @@ router.get("/api/orders/:id/file", adminAuth, (req, res) => {
 });
 
 // ── (stats moved above /:id — see top of GET routes) ─────────────────
-});
 
 export default router;
