@@ -554,7 +554,7 @@ section { position: relative; z-index: 10; }
 
 /* WHATSAPP */
 .whatsapp-btn {
-  position: fixed; bottom: 28px; right: 28px; z-index: 300;
+  position: fixed; bottom: 90px; right: 28px; z-index: 300;
   width: 58px; height: 58px; border-radius: 50%;
   background: #25D366;
   display: flex; align-items: center; justify-content: center;
@@ -612,13 +612,20 @@ section { position: relative; z-index: 10; }
   footer { padding: 48px 24px; }
   .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
   .story-line { font-size: clamp(36px, 9vw, 60px); }
-  .whatsapp-btn { bottom: 20px; right: 20px; }
+  .whatsapp-btn { bottom: 80px; right: 20px; }
 }
 @media (max-width: 480px) {
   .hero-stats { gap: 16px; }
   .stat-num { font-size: 20px; }
   .monitor-metrics { grid-template-columns: 1fr; }
   .footer-grid { grid-template-columns: 1fr; }
+}
+@media (max-height: 700px) {
+  .hero-badge { margin-bottom: 16px; }
+  .hero-title { font-size: clamp(36px, 5vw, 60px); margin-bottom: 14px; }
+  .hero-sub { font-size: 15px; margin-bottom: 24px; }
+  .hero-btns { margin-bottom: 32px; }
+  .hero-stats .stat-num { font-size: 22px; }
 }
 
 /* FOOTER */
