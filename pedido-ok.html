@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pedido confirmado — Toy3DMaker</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&family=Lexend:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --blue: #0055DD; --orange: #FF4500; --teal: #00a89d;
+  --surface: rgba(255,255,255,0.82); --text: #1a1a1a; --muted: #555;
+  --glass: rgba(255,255,255,0.55); --glass-border: rgba(255,255,255,0.7);
+}
+html { scroll-behavior: smooth; }
+body {
+  background: #87c5e8; color: var(--text);
+  font-family: 'Lexend', sans-serif; min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+}
+body::before {
+  content: ''; position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 0; opacity: 0.4;
+}
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  padding: 0 40px; height: 72px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(255,255,255,0.85); backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255,255,255,0.6);
+}
+.logo {
+  font-family: 'Space Grotesk', sans-serif; font-weight: 900; font-size: 20px;
+  color: var(--teal); text-transform: uppercase; letter-spacing: -0.02em;
+  display: flex; align-items: center; gap: 10px; text-decoration: none;
+}
+.logo-dot { width: 10px; height: 10px; background: var(--teal); border-radius: 50%; }
+.main {
+  position: relative; z-index: 1; width: 100%; max-width: 640px;
+  padding: 120px 24px 80px;
+}
+.card {
+  background: var(--surface); backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border); border-radius: 20px;
+  padding: 48px 40px; text-align: center;
+}
+.check-icon {
+  width: 72px; height: 72px; background: var(--teal); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 24px; font-size: 32px;
+}
+h1 {
+  font-family: 'Space Grotesk', sans-serif; font-weight: 900; font-size: 32px;
+  letter-spacing: -0.03em; margin-bottom: 12px;
+}
+.subtitle { color: var(--muted); font-size: 16px; line-height: 1.6; margin-bottom: 40px; }
+
+/* Progress tracker */
+.tracker { display: flex; align-items: flex-start; gap: 0; margin: 32px 0; }
+.step { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; }
+.step:not(:last-child)::after {
+  content: ''; position: absolute; top: 15px; left: 50%; width: 100%;
+  height: 2px; background: #ddd; z-index: 0;
+}
+.step.done:not(:last-child)::after { background: var(--teal); }
+.step-dot {
+  width: 30px; height: 30px; border-radius: 50%; border: 2px solid #ddd;
+  background: white; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; position: relative; z-index: 1;
+  color: #bbb; transition: all 0.3s;
+}
+.step.done .step-dot { background: var(--teal); border-color: var(--teal); color: white; }
+.step.current .step-dot {
+  background: var(--blue); border-color: var(--blue); color: white;
+  box-shadow: 0 0 0 4px rgba(0,85,221,0.2);
+}
+.step-label {
+  margin-top: 10px; font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--muted); text-align: center; line-height: 1.3;
+}
+.step.done .step-label, .step.current .step-label { color: var(--text); }
+
+/* Details */
+.details {
+  background: rgba(0,168,157,0.06); border: 1px solid rgba(0,168,157,0.2);
+  border-radius: 12px; padding: 20px 24px; margin: 24px 0; text-align: left;
+}
+.detail-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
+.detail-row:not(:last-child) { border-bottom: 1px solid rgba(0,168,157,0.1); }
+.detail-key { color: var(--muted); }
+.detail-val { font-weight: 600; }
+.status-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.status-pendiente_pago { background: #fef9c3; color: #854d0e; }
+.status-pagado         { background: #dcfce7; color: #166534; }
+.status-en_cola        { background: #e0f2fe; color: #075985; }
+.status-imprimiendo    { background: #fce7f3; color: #9d174d; }
+.status-listo          { background: #d1fae5; color: #065f46; }
+.status-entregado      { background: #f0fdf4; color: #14532d; }
+.status-cancelado      { background: #fee2e2; color: #991b1b; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 14px 28px; border-radius: 8px; border: none; cursor: pointer;
+  font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em; text-decoration: none;
+  transition: all 0.3s;
+}
+.btn-primary { background: var(--blue); color: white; box-shadow: 0 8px 30px rgba(0,85,221,0.3); }
+.btn-primary:hover { background: var(--orange); box-shadow: 0 8px 30px rgba(255,69,0,0.3); }
+.btn-outline { background: transparent; color: var(--text); border: 2px solid rgba(0,0,0,0.15); }
+.btn-outline:hover { border-color: var(--teal); color: var(--teal); }
+.btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 32px; }
+
+/* Loading / error states */
+.loading { color: var(--muted); font-size: 14px; padding: 20px 0; }
+.error-box {
+  background: #fee2e2; border: 1px solid #fca5a5; border-radius: 10px;
+  padding: 16px 20px; color: #991b1b; font-size: 14px; margin: 16px 0;
+}
+.ref-id { font-family: monospace; font-size: 11px; color: var(--muted); margin-top: 8px; }
+
+@media (max-width: 600px) {
+  .card { padding: 32px 20px; }
+  h1 { font-size: 26px; }
+  .step-label { font-size: 9px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="logo"><div class="logo-dot"></div>Toy3DMaker</a>
+</nav>
+
+<div class="main">
+  <div class="card" id="card">
+    <div id="loading-state">
+      <p class="loading">Cargando tu pedido...</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const STEPS = [
+  { key: "pendiente_pago", label: "Pago\npendiente", icon: "💳" },
+  { key: "pagado",         label: "Pago\nconfirmado",  icon: "✓" },
+  { key: "en_cola",        label: "En\ncola",          icon: "📋" },
+  { key: "imprimiendo",    label: "Imprimiendo",       icon: "🖨" },
+  { key: "listo",          label: "Listo",             icon: "🎉" },
+  { key: "entregado",      label: "Entregado",         icon: "📦" },
+];
+
+const STATUS_LABELS = {
+  pendiente_pago: "Pendiente de pago",
+  pagado:         "Pago confirmado",
+  en_cola:        "En cola",
+  imprimiendo:    "Imprimiendo",
+  listo:          "¡Listo para recoger!",
+  entregado:      "Entregado",
+  cancelado:      "Cancelado",
+};
+
+const STATUS_MSG = {
+  pendiente_pago: "Tu pedido está creado pero el pago aún no se ha completado.",
+  pagado:         "¡Pago confirmado! Tu pedido está en la cola de impresión.",
+  en_cola:        "Tu pedido está esperando su turno en la impresora.",
+  imprimiendo:    "¡Tu figura ya está en la impresora! Pronto estará lista.",
+  listo:          "Tu figura está lista. Nos pondremos en contacto para la entrega.",
+  entregado:      "¡Pedido entregado! Gracias por confiar en Toy3DMaker.",
+  cancelado:      "Este pedido ha sido cancelado. Contacta con nosotros si tienes dudas.",
+};
+
+function formatDate(iso) {
+  return new Date(iso).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" });
+}
+
+function formatMoney(v) {
+  if (v == null) return "—";
+  return Number(v).toLocaleString("es-ES", { style: "currency", currency: "EUR" });
+}
+
+function buildTracker(currentStatus) {
+  if (currentStatus === "cancelado") return `<p style="color:#991b1b;font-weight:600">❌ Pedido cancelado</p>`;
+  const currentIdx = STEPS.findIndex(s => s.key === currentStatus);
+  return `<div class="tracker">
+    ${STEPS.map((s, i) => {
+      const cls = i < currentIdx ? "done" : i === currentIdx ? "current" : "";
+      return `<div class="step ${cls}">
+        <div class="step-dot">${i < currentIdx ? "✓" : s.icon}</div>
+        <div class="step-label">${s.label.replace("\n","<br>")}</div>
+      </div>`;
+    }).join("")}
+  </div>`;
+}
+
+function buildCard(order) {
+  const isOk = order.status !== "cancelado" && order.status !== "pendiente_pago";
+  const price = order.price_final ?? order.price_estimate;
+  return `
+    <div class="check-icon">${isOk ? "✓" : "⏳"}</div>
+    <h1>${isOk ? "¡Pedido confirmado!" : "Pedido creado"}</h1>
+    <p class="subtitle">${STATUS_MSG[order.status] ?? ""}</p>
+    ${buildTracker(order.status)}
+    <div class="details">
+      <div class="detail-row">
+        <span class="detail-key">Estado</span>
+        <span class="detail-val">
+          <span class="status-pill status-${order.status}">${STATUS_LABELS[order.status] ?? order.status}</span>
+        </span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-key">Cliente</span>
+        <span class="detail-val">${order.name}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-key">Material</span>
+        <span class="detail-val">${order.material} · ${order.quality}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-key">Cantidad</span>
+        <span class="detail-val">${order.quantity} ud.</span>
+      </div>
+      ${price != null ? `<div class="detail-row">
+        <span class="detail-key">Precio</span>
+        <span class="detail-val">${formatMoney(price)}</span>
+      </div>` : ""}
+      <div class="detail-row">
+        <span class="detail-key">Actualizado</span>
+        <span class="detail-val">${formatDate(order.updated_at)}</span>
+      </div>
+    </div>
+    <p class="ref-id">Ref: ${order.id}</p>
+    <div class="btns">
+      <a href="/" class="btn btn-primary">Hacer otro pedido ✦</a>
+      <a href="https://wa.me/34663486100" target="_blank" class="btn btn-outline">Contactar por WhatsApp</a>
+    </div>`;
+}
+
+async function init() {
+  const params  = new URLSearchParams(location.search);
+  const orderId = params.get("order");
+  const card    = document.getElementById("card");
+
+  if (!orderId) {
+    card.innerHTML = `<div class="error-box">No se encontró ningún pedido. <a href="/">Volver al inicio</a></div>`;
+    return;
+  }
+
+  try {
+    const r = await fetch(`/api/orders/${orderId}/status`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const order = await r.json();
+    card.innerHTML = buildCard(order);
+  } catch (e) {
+    card.innerHTML = `
+      <div class="check-icon">⏳</div>
+      <h1>Pedido recibido</h1>
+      <p class="subtitle">Tu pedido se está procesando. Te enviaremos un correo cuando tengamos novedades.</p>
+      <div class="error-box">No se pudo cargar el estado del pedido. Guarda esta referencia: <strong>${orderId}</strong></div>
+      <div class="btns">
+        <a href="/" class="btn btn-primary">Volver al inicio</a>
+        <a href="https://wa.me/34663486100" target="_blank" class="btn btn-outline">Contactar</a>
+      </div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>

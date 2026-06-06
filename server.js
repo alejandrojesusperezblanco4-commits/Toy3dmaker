@@ -19,6 +19,7 @@ app.use(express.static(path.join(__dirname)));
     res.sendFile(path.join(__dirname, `${p}.html`))
   )
 );
+app.get("/pedido-ok", (_req, res) => res.sendFile(path.join(__dirname, "pedido-ok.html")));
 
 // ── Pedidos + Stripe ────────────────────────────────────────────────
 app.use(ordersRouter);

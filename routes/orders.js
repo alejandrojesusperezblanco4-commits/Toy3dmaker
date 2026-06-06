@@ -39,6 +39,39 @@ function adminAuth(req, res, next) {
   next();
 }
 
+const STATUS_EMAILS = {
+  pagado:      { subject: "✅ Pago confirmado — Toy3DMaker", msg: "¡Tu pago se ha confirmado! Tu pedido está en cola." },
+  en_cola:     { subject: "📋 Pedido en cola — Toy3DMaker", msg: "Tu pedido está en la cola de impresión. Te avisamos cuando empiece." },
+  imprimiendo: { subject: "🖨️ ¡Imprimiendo! — Toy3DMaker", msg: "¡Tu figura ya está en la impresora!" },
+  listo:       { subject: "🎉 ¡Tu pedido está listo! — Toy3DMaker", msg: "Tu figura está lista para recoger o enviar. Nos ponemos en contacto contigo." },
+  entregado:   { subject: "📦 Pedido entregado — Toy3DMaker", msg: "Tu pedido ha sido entregado. ¡Gracias por confiar en nosotros!" },
+  cancelado:   { subject: "❌ Pedido cancelado — Toy3DMaker", msg: "Tu pedido ha sido cancelado. Contacta con nosotros si tienes dudas." },
+};
+
+async function sendStatusEmail(order, newStatus) {
+  const key = process.env.RESEND_API_KEY;
+  if (!key || !order.email) return;
+  const info = STATUS_EMAILS[newStatus];
+  if (!info) return;
+  const base = process.env.PUBLIC_URL ?? "https://toy3dmaker-production.up.railway.app";
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: "Toy3DMaker <pedidos@toy3dmaker.com>",
+      to:   [order.email],
+      subject: info.subject,
+      html: `<div style="font-family:sans-serif;max-width:520px;margin:auto">
+        <h2 style="color:#00a89d">Toy3DMaker</h2>
+        <p>Hola <strong>${order.name}</strong>,</p>
+        <p>${info.msg}</p>
+        <p><a href="${base}/pedido-ok?order=${order.id}" style="background:#0055DD;color:#fff;padding:10px 20px;text-decoration:none;border-radius:4px">Ver mi pedido</a></p>
+        <p style="color:#888;font-size:12px">Ref: ${order.id}</p>
+      </div>`,
+    }),
+  });
+}
+
 // ── POST /api/orders ─────────────────────────────────────────────────
 // Crea un pedido. Acepta multipart (con STL) o JSON (sin archivo).
 router.post("/api/orders", upload.single("stl"), (req, res) => {
@@ -165,6 +198,18 @@ router.post("/api/stripe/webhook",
   }
 );
 
+// ── GET /api/orders/:id/status ────────────────────────────────────────
+// Público — no requiere autenticación. El cliente usa esto para ver su pedido.
+router.get("/api/orders/:id/status", (req, res) => {
+  const order = db.prepare(`
+    SELECT id, status, name, material, quality, quantity,
+           price_estimate, price_final, created_at, updated_at
+    FROM orders WHERE id = ?
+  `).get(req.params.id);
+  if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
+  res.json(order);
+});
+
 // ── GET /api/orders/stats ────────────────────────────────────────────
 // IMPORTANTE: debe ir ANTES de /:id para que "stats" no sea capturado como ID
 router.get("/api/orders/stats", adminAuth, (_req, res) => {
@@ -204,9 +249,16 @@ router.patch("/api/orders/:id", adminAuth, (req, res) => {
   const fields  = Object.keys(req.body).filter(k => allowed.includes(k));
   if (!fields.length) return res.status(400).json({ error: "Nada que actualizar" });
 
+  const existing = db.prepare("SELECT * FROM orders WHERE id = ?").get(req.params.id);
+  if (!existing) return res.status(404).json({ error: "Pedido no encontrado" });
+
   const set = fields.map(f => `${f} = @${f}`).join(", ");
   db.prepare(`UPDATE orders SET ${set}, updated_at = @updated_at WHERE id = @id`)
     .run({ ...req.body, updated_at: now(), id: req.params.id });
+
+  if (req.body.status && req.body.status !== existing.status) {
+    sendStatusEmail(existing, req.body.status).catch(e => console.warn("[email]", e));
+  }
 
   res.json({ ok: true });
 });
