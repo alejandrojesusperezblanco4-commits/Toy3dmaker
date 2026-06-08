@@ -1,5 +1,6 @@
 [phases.setup]
-nixPkgs = ["nodejs_18", "npm-9_x", "glib", "nss", "nspr", "freetype", "harfbuzz", "expat"]
+aptPkgs = ["chromium-browser"]
 
 [variables]
-LD_LIBRARY_PATH = "/root/.nix-profile/lib"
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
+PUPPETEER_EXECUTABLE_PATH = "/usr/bin/chromium-browser"
