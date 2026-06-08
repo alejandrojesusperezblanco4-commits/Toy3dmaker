@@ -36,15 +36,13 @@ export async function sendWA(phone, message) {
 function findChromium() {
   const candidates = [
     process.env.PUPPETEER_EXECUTABLE_PATH,
-    "/usr/bin/chromium-browser",
-    "/usr/bin/chromium",
-    "/usr/bin/google-chrome",
     "/usr/bin/google-chrome-stable",
+    "/usr/bin/google-chrome",
   ].filter(Boolean);
   for (const p of candidates) {
     try { fs.accessSync(p, fs.constants.X_OK); return p; } catch {}
   }
-  return undefined;
+  return undefined; // Puppeteer uses its own bundled Chrome
 }
 
 export function initWhatsApp() {
