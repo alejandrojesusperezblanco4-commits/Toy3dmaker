@@ -2,6 +2,7 @@ import express      from "express";
 import path         from "node:path";
 import { fileURLToPath } from "node:url";
 import ordersRouter from "./routes/orders.js";
+import { initWhatsApp } from "./whatsapp.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app  = express();
@@ -143,4 +144,5 @@ app.get("*", (_req, res) => {
 
 app.listen(port, "0.0.0.0", () => {
   console.log(`[toy3dmaker] Running on port ${port}`);
+  initWhatsApp();
 });

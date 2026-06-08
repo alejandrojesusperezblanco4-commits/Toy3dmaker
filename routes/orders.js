@@ -5,6 +5,7 @@ import fs       from "node:fs";
 import { randomUUID } from "node:crypto";
 import Stripe   from "stripe";
 import db, { uploadsDir } from "../db.js";
+import { sendWA, getWAStatus } from "../whatsapp.js";
 
 const router = Router();
 
@@ -47,6 +48,21 @@ const STATUS_EMAILS = {
   entregado:   { subject: "📦 Pedido entregado — Toy3DMaker", msg: "Tu pedido ha sido entregado. ¡Gracias por confiar en nosotros!" },
   cancelado:   { subject: "❌ Pedido cancelado — Toy3DMaker", msg: "Tu pedido ha sido cancelado. Contacta con nosotros si tienes dudas." },
 };
+
+const STATUS_WA = {
+  pagado:      n => `✅ ¡Hola ${n}! Tu pago en Toy3DMaker se ha confirmado. Tu pedido está en cola de impresión.`,
+  en_cola:     n => `📋 ¡Hola ${n}! Tu pedido está en la cola. Te avisamos cuando empiece a imprimirse.`,
+  imprimiendo: n => `🖨️ ¡Hola ${n}! Tu figura ya está en la impresora. Te avisamos cuando esté lista.`,
+  listo:       n => `🎉 ¡Hola ${n}! Tu figura está lista. Nos pondremos en contacto para coordinar la entrega.`,
+  entregado:   n => `📦 ¡Pedido entregado! Gracias por confiar en Toy3DMaker, ${n} 🙏`,
+  cancelado:   n => `❌ Hola ${n}, tu pedido ha sido cancelado. Contacta con nosotros si tienes dudas.`,
+};
+
+async function sendStatusWhatsApp(order, newStatus) {
+  const msgFn = STATUS_WA[newStatus];
+  if (!msgFn || !order.phone) return;
+  await sendWA(order.phone, msgFn(order.name));
+}
 
 async function sendStatusEmail(order, newStatus) {
   const key = process.env.RESEND_API_KEY;
@@ -258,9 +274,15 @@ router.patch("/api/orders/:id", adminAuth, (req, res) => {
 
   if (req.body.status && req.body.status !== existing.status) {
     sendStatusEmail(existing, req.body.status).catch(e => console.warn("[email]", e));
+    sendStatusWhatsApp(existing, req.body.status).catch(e => console.warn("[whatsapp]", e));
   }
 
   res.json({ ok: true });
+});
+
+// ── GET /api/whatsapp/status ─────────────────────────────────────────
+router.get("/api/whatsapp/status", adminAuth, (_req, res) => {
+  res.json(getWAStatus());
 });
 
 // ── GET /api/orders/:id/file ─────────────────────────────────────────
