@@ -1,6 +1,7 @@
 import pkg from "whatsapp-web.js";
 const { Client, LocalAuth } = pkg;
 import qrcode from "qrcode";
+import fs from "node:fs";
 
 const ENABLED = process.env.WA_ENABLED === "true";
 
@@ -32,16 +33,32 @@ export async function sendWA(phone, message) {
   }
 }
 
+function findChromium() {
+  const candidates = [
+    process.env.PUPPETEER_EXECUTABLE_PATH,
+    "/usr/bin/chromium-browser",
+    "/usr/bin/chromium",
+    "/usr/bin/google-chrome",
+    "/usr/bin/google-chrome-stable",
+  ].filter(Boolean);
+  for (const p of candidates) {
+    try { fs.accessSync(p, fs.constants.X_OK); return p; } catch {}
+  }
+  return undefined;
+}
+
 export function initWhatsApp() {
   if (!ENABLED) return;
 
   const dataPath = process.env.DATA_DIR ?? "./data";
+  const executablePath = findChromium();
+  console.log("[whatsapp] chromium path:", executablePath ?? "bundled");
 
   client = new Client({
     authStrategy: new LocalAuth({ dataPath }),
     puppeteer: {
       args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--headless"],
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      executablePath,
     },
   });
 
