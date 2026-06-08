@@ -1,6 +1,5 @@
 [phases.setup]
-nixPkgs = ["nodejs_18", "npm-9_x", "chromium", "nss", "freetype", "harfbuzz"]
+nixPkgs = ["nodejs_18", "npm-9_x", "chromium", "glib", "nss", "nspr", "freetype", "harfbuzz", "expat", "libgbm", "xorg.libX11", "xorg.libXcomposite", "xorg.libXdamage", "xorg.libXext", "xorg.libXfixes", "xorg.libXrandr", "xorg.libxcb", "pango", "atk", "cups", "alsa-lib", "mesa"]
 
 [variables]
-PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
 PUPPETEER_EXECUTABLE_PATH = "/root/.nix-profile/bin/chromium"
