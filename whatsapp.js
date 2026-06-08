@@ -40,7 +40,7 @@ export function initWhatsApp() {
   client = new Client({
     authStrategy: new LocalAuth({ dataPath }),
     puppeteer: {
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--headless"],
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     },
   });
