@@ -970,9 +970,14 @@ footer { background: rgba(255,255,255,0.88); backdrop-filter: blur(24px); border
       </div>
       <div class="cot-result">
         <div>
-          <div class="cot-label">Estimación</div>
+          <div class="cot-label">Precio estimado</div>
           <div class="cot-price" id="cot-price-val">— €</div>
           <div id="cot-price-sub" style="font-size:13px;color:var(--muted);margin-top:4px">Sube un archivo para calcular</div>
+        </div>
+        <div style="border-left:1px solid rgba(255,255,255,.08);padding-left:32px">
+          <div class="cot-label">Tiempo estimado</div>
+          <div class="cot-price" id="cot-time-val" style="font-size:32px">—</div>
+          <div id="cot-time-sub" style="font-size:13px;color:var(--muted);margin-top:4px">por unidad</div>
         </div>
         <button class="btn-primary" onclick="submitCot()">Solicitar cotización</button>
       </div>
@@ -1247,22 +1252,42 @@ function handleFile(input) {
   calcPrice();
 }
 
+const TIME_BASE    = { "1.0": 45, "2.0": 150, "3.5": 360, "5.5": 720 };
+const TIME_QUALITY = { "1.0": 1.0, "1.3": 1.6, "1.8": 3.0, "2.5": 5.5 };
+const TIME_INFILL  = { "1.0": 0.9, "1.2": 1.0, "1.5": 1.4, "2.0": 2.2 };
+
+function fmtTime(min) {
+  if (min < 60) return `~${Math.round(min)}min`;
+  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  return m > 0 ? `~${h}h ${m}min` : `~${h}h`;
+}
+
 function calcPrice() {
   const file = document.getElementById('file-input').files[0];
   if (!file) return;
 
   const basePrice  = parseFloat(document.getElementById('cot-material').value) || 8;
-  const sizeFactor = parseFloat(document.getElementById('cot-tamanyo').value)  || 1.0;
-  const qualMult   = parseFloat(document.getElementById('cot-calidad').value)  || 1.0;
-  const infillMult = parseFloat(document.getElementById('cot-infill').value)   || 1.0;
+  const sizeVal    = document.getElementById('cot-tamanyo').value;
+  const qualVal    = document.getElementById('cot-calidad').value;
+  const infillVal  = document.getElementById('cot-infill').value;
+  const sizeFactor = parseFloat(sizeVal)  || 1.0;
+  const qualMult   = parseFloat(qualVal)  || 1.0;
+  const infillMult = parseFloat(infillVal) || 1.0;
   const qty        = Math.max(1, parseInt(document.getElementById('cot-qty').value) || 1);
 
   const unitPrice = Math.max(8, basePrice * sizeFactor * qualMult * infillMult);
   const total     = unitPrice * qty;
 
+  const unitMins = (TIME_BASE[sizeVal] || 150) * (TIME_QUALITY[qualVal] || 1.0) * (TIME_INFILL[infillVal] || 1.0);
+
   document.getElementById('cot-price-val').textContent = total.toFixed(0) + ' €';
   document.getElementById('cot-price-sub').textContent = qty > 1
     ? `${unitPrice.toFixed(0)} € × ${qty} uds · estimación orientativa`
+    : 'estimación orientativa';
+
+  document.getElementById('cot-time-val').textContent = fmtTime(unitMins);
+  document.getElementById('cot-time-sub').textContent = qty > 1
+    ? `por unidad · ${fmtTime(unitMins * qty)} total`
     : 'estimación orientativa';
 }
 
@@ -1278,6 +1303,7 @@ function submitCot() {
   const qty      = Math.max(1, parseInt(document.getElementById('cot-qty').value) || 1);
   const precio   = document.getElementById('cot-price-val').textContent;
 
+  const tiempo = document.getElementById('cot-time-val').textContent;
   const msg = encodeURIComponent(
     `Hola! Quiero solicitar una cotización de impresión 3D:\n\n` +
     `📁 Archivo: ${file.name}\n` +
@@ -1286,7 +1312,8 @@ function submitCot() {
     `⚙️ Calidad: ${calidad}\n` +
     `🔩 Relleno: ${infill}\n` +
     `📦 Cantidad: ${qty} unidad(es)\n` +
-    `💰 Precio estimado: ${precio}\n\n` +
+    `💰 Precio estimado: ${precio}\n` +
+    `⏱️ Tiempo estimado: ${tiempo} por unidad\n\n` +
     `¿Podéis confirmar el presupuesto final?`
   );
   window.open(`https://wa.me/34663486100?text=${msg}`, '_blank');
