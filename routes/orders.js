@@ -285,6 +285,14 @@ router.get("/api/whatsapp/status", adminAuth, (_req, res) => {
   res.json(getWAStatus());
 });
 
+// ── POST /api/whatsapp/test ──────────────────────────────────────────
+router.post("/api/whatsapp/test", adminAuth, async (req, res) => {
+  const { phone } = req.body;
+  if (!phone) return res.status(400).json({ error: "Falta phone" });
+  const ok = await sendWA(phone, "✅ Mensaje de prueba desde Toy3DMaker. ¡WhatsApp funcionando correctamente!");
+  res.json({ ok });
+});
+
 // ── GET /api/orders/:id/file ─────────────────────────────────────────
 router.get("/api/orders/:id/file", adminAuth, (req, res) => {
   const order = db.prepare("SELECT stl_path, stl_filename FROM orders WHERE id = ?")
